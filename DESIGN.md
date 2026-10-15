@@ -168,7 +168,7 @@ const { resolve } = useMotionPreference();
 **How to apply:**
 
 - Naming: drop `colors/`, join the path with `-`, and drop the repeated last segment (`colors/tone/brand/brand` → `--brand`, `colors/card/subtle` → `--card-subtle`). `on-<tone>` becomes `--<tone>-foreground`.
-- Diff every mapped variable on each sync, in both modes, against the resolved `theme.css` value. The 2026-10-15 sync checked 90 tokens × 2 modes: 0 drift.
+- Diff every mapped variable on each sync, in both modes, against the resolved `theme.css` value. The second 2026-10-15 sync checked 169 CSS tokens (259 token × mode values, primitives included): 0 color drift. The one change was `font-family/code`, which went from Roboto Mono to Geist Mono.
 
 ### Mapping decisions
 
@@ -189,7 +189,7 @@ const { resolve } = useMotionPreference();
 ### Deliberately not mirrored
 
 - **Primitives as utilities:** only the 7 palettes the Archie modes reference (gray, vermilion, sky, info, success, warning, destructive) are declared, as `:root` variables. They aren't registered as Tailwind colors, so `bg-gray-100` stays Tailwind's gray. Components use semantic tokens. The other 15 palettes belong to other products' modes.
-- **Typography:** Geist is shipped. The Figma `font-family/headline` and `/bodytext` variables say Geist, but 52 of 55 text styles still render Inter through orphaned variables. The type scale comes from the live `font-size/*` and `line-height/*` primitives (2xl = 24/32, not the old styles' 24/36). `font-size/xxs` (11px) is skipped: it has no paired line height and no text style uses it.
+- **Typography:** Geist is shipped. The Figma `font-family/headline` and `/bodytext` variables say Geist, but 48 of 55 text styles still render Inter through orphaned variables. The type scale comes from the live `font-size/*` and `line-height/*` primitives (2xl = 24/32, not the old styles' 24/36). `font-size/xxs` (11px) is skipped: it has no paired line height and no text style uses it.
 - **Not synced yet:** `code/*` (syntax colors), `decorative/decorative-1`, `linear-1A/1B` (gradient stops), the `components` collection (`inbox-unread`, `chat-bubble`, `overlay`), the `radius/*` component radii, the `Sonner` effect style, `paragraph-gap/*` and `breakpoint/width|height` (the artboard size, not a breakpoint). Add each with the component that needs it.
 - **Spacing, font weights and base radius** already equal Tailwind's defaults and `--radius: 0.5rem`, so they aren't redefined.
 

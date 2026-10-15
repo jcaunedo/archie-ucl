@@ -1,0 +1,31 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title='Guidelines/Overview' />
+
+# Guidelines
+
+Components tell you what each piece looks like. These guidelines tell you how the pieces behave **together**: how a removed row leaves a table, where a layout changes at a breakpoint, how to read a Figma value. Each rule was settled with design, so follow it instead of re-deciding it screen by screen.
+
+## One quality bar for every product
+
+Every Archie product is designed to be intuitive, efficient and human. That bar is the same for customer-facing screens and for internal or operational tools. Don't reach for a lower-effort pattern (skipping states, motion or copy quality) because a screen is internal-only.
+
+## How each rule is written
+
+- **Rule:** what to do, in plain language.
+- **Why:** the reason, so you can tell a deliberate choice from an accident.
+- **For developers:** the token, helper or prop that implements it, and what not to hand-roll.
+
+## The guidelines
+
+| Page | Covers |
+| --- | --- |
+| [Voice and copy](?path=/docs/guidelines-voice-and-copy--docs) | Archie, Archie Core and Archie Labs, and the brand voice |
+| [Tables and lists](?path=/docs/guidelines-tables-and-lists--docs) | How a row leaves a table or list |
+| [Page layout](?path=/docs/guidelines-page-layout--docs) | Breakpoints, and the frame widths they're reviewed at |
+| [Building from Figma](?path=/docs/guidelines-building-from-figma--docs) | The two Figma files, and reading sizes, spacing and tokens literally |
+| [Developer contracts](?path=/docs/guidelines-developer-contracts--docs) | Code-level rules that keep the others from breaking |
+
+## Where the rules live
+
+The source of truth is `DESIGN.md` in the UCL repo. These pages restate it for a wider audience. When a rule changes, update `DESIGN.md` and the matching page here in the same change.

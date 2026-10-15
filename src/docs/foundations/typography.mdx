@@ -1,0 +1,34 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+import themeCss from "../../styles/theme.css?raw";
+import { FontFamilies, FontWeights, TypeScale } from "./type-scale";
+
+<Meta title='Foundations/Typography' />
+
+# Typography
+
+The type tokens live in `src/styles/theme.css`, synced from the archielabs.ds Figma file. Use them through Tailwind's `text-*`, `font-*` and `font-sans`/`font-mono` utilities. Don't use arbitrary sizes such as `text-[15px]`.
+
+⚠️ **Gap:** UCL doesn't have a `Typography` component yet. Until it does, set text with these utilities directly.
+
+## Fonts
+
+**Geist** for all interface text and **Geist Mono** for code, from Figma's `font-family/headline`, `/bodytext` and `/code` variables.
+
+<FontFamilies css={themeCss} />
+
+ℹ️ `theme.css` declares the font tokens but doesn't load the webfonts. Storybook loads them in `.storybook/preview-head.html`. Consuming apps load Geist (300–900) and Geist Mono (400–700) themselves, e.g. with `next/font/google` (see CLAUDE.md → "Consumer Integration"). Without them, text falls back to the system font.
+
+## Type scale
+
+Generated from the `--text-*` tokens. Each size sets its font size and paired line height, from Figma's `font-size/*` and `line-height/*` primitives.
+
+<TypeScale css={themeCss} />
+
+⚠️ **Constraint:** most archielabs.ds text styles still render Inter and older line heights (2xl at 24/36). UCL follows the live primitives (2xl at 24/32) and Geist. DESIGN.md → "Deliberately not mirrored" has the details.
+
+## Weights
+
+Tailwind's default weights already match Figma's `font-weight/*` primitives, so `theme.css` doesn't redefine them.
+
+<FontWeights />

@@ -1,176 +1,36 @@
-import { Meta, ColorPalette, ColorItem } from "@storybook/addon-docs/blocks";
+import { Meta } from "@storybook/addon-docs/blocks";
+
+import themeCss from "../../styles/theme.css?raw";
+import { ColorTokens, PrimitiveRamps } from "./color-tokens";
 
 <Meta title='Foundations/Colors' />
 
 # Colors
 
-Colors are semantic tokens defined in `src/styles/theme.css`. Each token is a CSS variable, such as `--primary`, and a Tailwind utility, such as `bg-primary` or `text-primary-foreground`.
+Every color in UCL is a token in `src/styles/theme.css`, synced from the `semantic` collection of the **archielabs.ds** Figma file: its **Archie** mode is the light theme and **Archie-dark** the dark one. Use tokens through their Tailwind utilities, never as raw values: `brand-subtle` is available as `bg-brand-subtle`, `text-brand-subtle`, `border-brand-subtle`, and so on.
 
-Pair each surface token with its `-foreground` token, so text always has enough contrast. The swatches below read the live variables, so they always match the theme.
+## How tokens are named
 
-<ColorPalette>
-	<ColorItem
-		title='Base'
-		subtitle='Page background and default text'
-		colors={{
-			background: "var(--background)",
-			foreground: "var(--foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Primary'
-		subtitle='Main actions and brand emphasis'
-		colors={{
-			primary: "var(--primary)",
-			"primary-foreground": "var(--primary-foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Secondary'
-		subtitle='Supporting actions'
-		colors={{
-			secondary: "var(--secondary)",
-			"secondary-foreground": "var(--secondary-foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Accent'
-		subtitle='Hover and selected states'
-		colors={{
-			accent: "var(--accent)",
-			"accent-foreground": "var(--accent-foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Muted'
-		subtitle='Subdued surfaces and secondary text'
-		colors={{
-			muted: "var(--muted)",
-			"muted-foreground": "var(--muted-foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Destructive'
-		subtitle='Errors and irreversible actions'
-		colors={{
-			destructive: "var(--destructive)",
-			"destructive-foreground": "var(--destructive-foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Card & Popover'
-		subtitle='Raised surfaces'
-		colors={{
-			card: "var(--card)",
-			"card-foreground": "var(--card-foreground)",
-			popover: "var(--popover)",
-			"popover-foreground": "var(--popover-foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Lines & Focus'
-		subtitle='Borders, input outlines, and focus rings'
-		colors={{
-			border: "var(--border)",
-			input: "var(--input)",
-			ring: "var(--ring)",
-		}}
-	/>
-</ColorPalette>
+- **Two tiers.** Primitive ramps (`gray`, `vermilion`, `sky` and the status ramps) hold the raw colors. Semantic tokens (`primary`, `foreground`, `border`, `brand-subtle`) point at them and name what the color does. Components only use semantic tokens.
+- **shadcn roles first.** `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `border`, `input` and `ring` keep their shadcn names, so shadcn components work unchanged. Pair each surface with its `-foreground` token.
+- **Brand is vermilion.** `primary` and `brand` are `vermilion-500`. `secondary` is the light brand fill (`brand-subtle`).
+- **Tones come in strengths.** Each tone (`brand`, `tone-accent`, `emphasis`, `neutral`, `info`, `success`, `warning`, `destructive`) has the strong color plus `-subtle` and `-muted` fills, and most have `-defined` and `-foreground`.
+- **`accent` isn't the accent color.** shadcn's `accent` is the hover and selected surface. The design system's dark-gray accent tone is `tone-accent`.
+- **Primitives aren't utilities.** `bg-gray-100` is Tailwind's own gray, not Archie's. If no semantic token fits, ask for one rather than reaching for a primitive.
 
-## Tones
+Every Figma variable behind these tokens, and the reasons for the mappings that aren't a straight copy, are in DESIGN.md → "Figma → theme.css token map". To add a color, add it to the `:root, .dark` block (and `.dark` when the dark value differs), then map it in `@theme inline` as `--color-<name>` under the comment it belongs to. It appears on this page automatically.
 
-Each tone has a solid color plus `-subtle` and `-muted` surfaces for tinted backgrounds. Most also have `-defined` (a stronger tint) and `-foreground` (text on the solid color). `primary` and `secondary` are built from the brand tone.
+## All color tokens
 
-<ColorPalette>
-	{[
-		["Brand", "brand", "Primary actions and brand moments", ["", "-foreground", "-subtle", "-muted", "-defined"]],
-		["Tone accent", "tone-accent", "Strong neutral emphasis (not shadcn's accent)", ["", "-foreground", "-subtle", "-muted", "-defined"]],
-		["Emphasis", "emphasis", "Highlights and unread markers", ["", "-foreground", "-subtle", "-muted", "-defined"]],
-		["Neutral", "neutral", "Neutral actions and badges", ["", "-foreground", "-subtle", "-muted", "-defined"]],
-		["Info", "info", "Informational status", ["", "-subtle", "-muted"]],
-		["Success", "success", "Positive status", ["", "-subtle", "-muted"]],
-		["Warning", "warning", "Caution status", ["", "-subtle", "-muted"]],
-		["Destructive", "destructive", "Errors and irreversible actions", ["", "-subtle", "-muted"]],
-	].map(([title, name, subtitle, steps]) => (
-		<ColorItem
-			key={name}
-			title={title}
-			subtitle={subtitle}
-			colors={Object.fromEntries(steps.map((s) => [name + s, `var(--${name}${s})`]))}
-		/>
-	))}
-</ColorPalette>
+Generated from `theme.css`. Each token shows its light swatch, then its dark one. The value under the name is what the token points at, light first, then dark when it differs.
 
-## Surfaces, text and icons
+<ColorTokens css={themeCss} />
 
-<ColorPalette>
-	<ColorItem
-		title='Surfaces'
-		subtitle='Backgrounds from lightest to most defined'
-		colors={{
-			"background-subtle": "var(--background-subtle)",
-			muted: "var(--muted)",
-			"background-defined": "var(--background-defined)",
-			"card-subtle": "var(--card-subtle)",
-			"card-muted": "var(--card-muted)",
-			"card-defined": "var(--card-defined)",
-			modal: "var(--modal)",
-		}}
-	/>
-	<ColorItem
-		title='Text'
-		subtitle='Default, secondary and placeholder text'
-		colors={{
-			foreground: "var(--foreground)",
-			"muted-foreground": "var(--muted-foreground)",
-			"foreground-subtle": "var(--foreground-subtle)",
-			"on-foreground": "var(--on-foreground)",
-		}}
-	/>
-	<ColorItem
-		title='Icons'
-		subtitle='Icon colors by emphasis'
-		colors={{
-			icon: "var(--icon)",
-			"icon-muted": "var(--icon-muted)",
-			"icon-subtle": "var(--icon-subtle)",
-			"icon-brand": "var(--icon-brand)",
-		}}
-	/>
-	<ColorItem
-		title='Lines'
-		subtitle='Borders, input states and focus rings'
-		colors={{
-			"border-subtle": "var(--border-subtle)",
-			"border-muted": "var(--border-muted)",
-			"input-disabled": "var(--input-disabled)",
-			"input-ring": "var(--input-ring)",
-			"ring-outside": "var(--ring-outside)",
-		}}
-	/>
-	<ColorItem
-		title='States'
-		subtitle='Links, selection, highlight and disabled'
-		colors={{
-			link: "var(--link)",
-			active: "var(--active)",
-			highlight: "var(--highlight)",
-			disabled: "var(--disabled)",
-		}}
-	/>
-	<ColorItem
-		title='Charts'
-		subtitle='Categorical series, in order'
-		colors={{
-			"chart-1": "var(--chart-1)",
-			"chart-2": "var(--chart-2)",
-			"chart-3": "var(--chart-3)",
-			"chart-4": "var(--chart-4)",
-			"chart-5": "var(--chart-5)",
-		}}
-	/>
-</ColorPalette>
+## Primitive ramps
+
+Only the palettes the Archie modes use. archielabs.ds has more, for other products.
+
+<PrimitiveRamps css={themeCss} />
 
 ## Radius
 

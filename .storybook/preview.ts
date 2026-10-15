@@ -11,7 +11,21 @@ const preview: Preview = {
 		},
 		options: {
 			storySort: {
-				order: ["Introduction", "Foundations"],
+				// Docs pages first, in reading order. Component categories follow in file order.
+				order: [
+					"Introduction",
+					"Foundations",
+					["Colors", "Typography", "Motion"],
+					"Guidelines",
+					[
+						"Overview",
+						"Voice and copy",
+						"Tables and lists",
+						"Page layout",
+						"Building from Figma",
+						"Developer contracts",
+					],
+				],
 			},
 		},
 	},

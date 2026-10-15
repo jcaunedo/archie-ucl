@@ -1,0 +1,45 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title='Guidelines/Tables and lists' />
+
+# Tables and lists
+
+## Removing a row: fade out, then the rows below glide up
+
+**Rule:** when a row leaves a table or list because its data was removed, it doesn't just vanish. It fades out, then the rows below move up into its space. Search and filter changes use the same motion.
+
+- **Opacity only.** There's no downward nudge, because a moving `<tr>` overlaps the next row's border.
+- **No entrance.** Rows on first render, or added by a data update, just appear.
+- **In sequence.** The row finishes fading (160ms, `exitTransition`) before the gap closes (`layoutSpring`).
+- **Reduced motion:** the gap closes at once. The fade stays, so the removal is still visible.
+
+**Why:** a row that disappears instantly leaves the user guessing which one went. The fade shows what left, and the glide shows where everything else moved.
+
+**For developers:** use `rowRemoveVariants` with this wiring, not a one-off animation:
+
+```tsx
+const MotionTableRow = motion.create(TableRow);
+const { resolve } = useMotionPreference();
+
+<TableBody>
+	<AnimatePresence initial={false}>
+		{rows.map((row) => (
+			<MotionTableRow
+				key={row.id}
+				layout='position'
+				variants={rowRemoveVariants}
+				initial='initial'
+				animate='animate'
+				exit='exit'
+				transition={{ layout: resolve(layoutSpring) }}
+			>
+				…
+			</MotionTableRow>
+		))}
+	</AnimatePresence>
+</TableBody>;
+```
+
+⚠️ **Constraint:** never `mode="popLayout"` on table rows. It takes the leaving row out of the flow with `position: absolute`, and a `<tr>` loses its table layout: its cells collapse while it fades.
+
+⚠️ **Constraint:** key rows by the record id, never the array index, or the wrong row fades out.

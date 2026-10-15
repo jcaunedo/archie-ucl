@@ -1,0 +1,30 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title='Guidelines/Page layout' />
+
+# Page layout
+
+## Breakpoints include their own width
+
+**Rule:** a breakpoint covers widths up to **and including** its frame width. The frames are:
+
+| Name | Frame width |
+| --- | --- |
+| `sm` | 640 |
+| `md` | 768 |
+| `lg` | 1024 |
+| `xl` | 1280 |
+| `2xl` | 1536 |
+| `3xl` | 1920 |
+
+So a window exactly 1024px wide gets the "1024 and below" layout, and the next layout starts at 1025px. In specs and comments, say "at `lg` (1024) and below" or "above `lg`", not "below `lg`" or "from `lg`".
+
+**Why:** designs are reviewed at those exact frame widths, and each frame has to show the layout designed for it. With Tailwind's default breakpoints, a frame at exactly 1024px got the next layout up.
+
+**For developers:** `theme.css` registers each Tailwind breakpoint 1px past its frame (`--breakpoint-lg: 1025px`), so write the usual classes: `lg:` means above 1024 and `max-lg:` means 1024 and below. Never write an arbitrary `min-[1025px]:`. In JavaScript, use `mediaAbove("lg")` from `@/lib/breakpoints` with `useMediaQuery` from `@/lib/hooks/use-media-query`, not a hand-written media query. Keep `theme.css` and `src/lib/breakpoints.ts` in sync.
+
+⚠️ **Constraint:** `theme.css` ships to consumers as `archie-ucl/styles`, so apps' own `sm:` to `3xl:` classes follow these boundaries too.
+
+## Page shells
+
+⚠️ **Gap:** there's no shared page shell yet (sidebar, canvas gutters, scroll behavior). When the first layout lands in `src/layouts/`, record its rules here and in DESIGN.md, so later layouts reuse it instead of setting their own gutters.

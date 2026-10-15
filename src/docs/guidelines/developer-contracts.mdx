@@ -1,0 +1,38 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title='Guidelines/Developer contracts' />
+
+# Developer contracts
+
+Code-level rules that keep the other guidelines from silently breaking. Each one is a contract between two pieces of code, or a fix that's easy to undo by accident. Full history in `DESIGN.md`.
+
+## Semantic tokens are declared on `:root, .dark`
+
+The light (Archie) semantic block in `theme.css` uses the selector `:root, .dark`, not just `:root`. The `.dark` block after it overrides only the values that differ.
+
+- Many tokens are aliases (`--primary: var(--brand)`). A `var()` resolves on the element that declares it, and descendants inherit the result. If the aliases were declared only on `:root`, a `.dark` wrapper below `<html>` (a Storybook decorator, a dark section of a page) would keep the light values inside it.
+- Add new semantic tokens to the `:root, .dark` block, and to `.dark` too only when the dark value differs.
+- Keep `.dark` after the shared block: both selectors have the same specificity, so order decides.
+- Primitives stay in plain `:root`.
+
+## Use tokens, never raw values
+
+Components use semantic Tailwind utilities (`bg-brand-subtle`, `text-icon-muted`), never hex, `oklch()` or primitive variables. Motion values come from `src/lib/motion/`, never inline durations, curves or distances. A missing value goes into `theme.css` or `tokens.ts` with a comment saying what it's for.
+
+ℹ️ Adding a token is a minor version. Renaming or removing a token, a `cva` variant key, a prop or an exported type is **breaking** for consuming apps, so call it out.
+
+## Values that live in two places
+
+CSS can't read TypeScript, so a few values are copied. Change each pair together:
+
+| Value | In TypeScript | Copied in |
+| --- | --- | --- |
+| Breakpoints | `src/lib/breakpoints.ts` | `--breakpoint-*` in `theme.css` |
+
+## Table rows don't use `popLayout`
+
+`AnimatePresence mode="popLayout"` takes a leaving `<tr>` out of its table layout and collapses its cells. Use the default mode with `rowRemoveVariants`, and key rows by record id. See [Tables and lists](?path=/docs/guidelines-tables-and-lists--docs).
+
+## Never animate one property two ways
+
+Don't animate the same property with CSS and Motion at once: they fight, and the result depends on which runs last. Pick one, and prefer Motion for anything that needs reduced-motion handling, since `useMotionPreference()` only reaches Motion transitions.

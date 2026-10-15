@@ -1,10 +1,17 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
+import remarkGfm from "remark-gfm";
 
 const config: StorybookConfig = {
 	stories: ["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"],
-	addons: ["@storybook/addon-docs"],
+	addons: [
+		{
+			name: "@storybook/addon-docs",
+			// GitHub-flavored Markdown (tables, task lists) in the MDX docs pages, which plain MDX doesn't parse.
+			options: { mdxPluginOptions: { mdxCompileOptions: { remarkPlugins: [remarkGfm] } } },
+		},
+	],
 	framework: {
 		name: "@storybook/react-vite",
 		options: {},

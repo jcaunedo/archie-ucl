@@ -1,0 +1,23 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title='Guidelines/Voice and copy' />
+
+# Voice and copy
+
+## Three product names, never interchangeable
+
+**Rule:** write **Archie** with a capital A and the rest lowercase, everywhere: UI copy, alt text, stories, docs, specs and comments. Never "ARCHIE", except where CSS uppercases a label. The three product lines are separate:
+
+| Name | What it is |
+| --- | --- |
+| **Archie** | The flagship full-stack app builder |
+| **Archie Core** | The backend-only tier of Archie |
+| **Archie Labs** | The professional services arm |
+
+**Why:** each name is a separate product with its own audience, so mixing them up sends people to the wrong one.
+
+**For developers:** when copy says "Archie" and the context could mean Core or Labs, ask which one. Identifiers that aren't user-facing (the `archie-ucl` package, CSS and JS names) keep their lowercase forms.
+
+## Brand voice
+
+⚠️ **Decision needed:** the brand voice isn't defined yet. DESIGN.md → "Brand voice" lists what's needed: who reads the UI, three to five words for how the product sounds, and the product's terminology (for example "blueprint", "project", "app"). Until then, write copy that is clear, specific and plain, and flag the copy you're unsure of for review.

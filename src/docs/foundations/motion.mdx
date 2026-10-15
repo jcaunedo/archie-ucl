@@ -1,0 +1,78 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+import tokensSource from "../../lib/motion/tokens.ts?raw";
+import transitionsSource from "../../lib/motion/transitions.ts?raw";
+import variantsSource from "../../lib/motion/variants.ts?raw";
+import patternsSource from "../../lib/motion/patterns.ts?raw";
+import { MotionDemos, MotionExports, MotionTokens, MotionTransitions } from "./motion-tokens";
+
+<Meta title='Foundations/Motion' />
+
+# Motion
+
+Motion explains a change: it gives feedback, shows where things came from, and makes the interface feel responsive. It should feel calm, refined and natural. Never bouncy, and never decoration for its own sake. When in doubt, choose the subtler option. The full principles are in CLAUDE.md → "Motion System".
+
+Every value on this page comes from `src/lib/motion/`, which the library exports:
+
+```tsx
+import { motion } from "motion/react";
+import { liftPattern, revealVariants, motionDuration } from "archie-ucl";
+
+<motion.div {...liftPattern}>…</motion.div>;
+```
+
+## Rules of thumb
+
+- **Use the presets.** Reach for a pattern or variant below before writing an animation, and never put raw durations, curves or distances in a component. If something new is needed, add it as a token in `src/lib/motion/tokens.ts` with a comment saying what it's for.
+- **No transition runs past 600ms.** `motionDuration.deliberate` is the ceiling. `pendingLoop` is longer because it's one cycle of a looping pulse, not a transition.
+- **Exits are shorter than entrances.** One documented exception: `expandVariants` closes its height on the same curve it opened with, because an ease-in collapse reads as a hard stop.
+- **Respect reduced motion.** Components read `useMotionPreference()` and pass their transitions through its `resolve`, which swaps in a near-instant one. Movement goes away; the state change stays visible.
+- **Animate `opacity` and `transform`.** Use Motion's `layout` for size and position changes instead of animating `height`, `top` or `margin` by hand. Never animate the same property with CSS and Motion at once.
+
+## Patterns in action
+
+Live demos built from the real presets. With reduced motion turned on in your OS, they fade instead of moving.
+
+<MotionDemos />
+
+## Tokens
+
+The raw values every preset is built from. Components use the presets, not these numbers directly.
+
+### Duration
+
+<MotionTokens source={tokensSource} group='motionDuration' />
+
+### Distance
+
+<MotionTokens source={tokensSource} group='motionDistance' />
+
+### Scale
+
+<MotionTokens source={tokensSource} group='motionScale' />
+
+### Rotation
+
+<MotionTokens source={tokensSource} group='motionRotation' />
+
+### Stagger
+
+<MotionTokens source={tokensSource} group='motionStagger' />
+
+## Transitions
+
+Timing presets, picked by intent: `standardTransition` for most changes, `enterTransition` for arrivals, `exitTransition` for departures, and springs for direct manipulation and layout.
+
+<MotionTransitions source={transitionsSource} />
+
+## Variants
+
+`initial` / `animate` / `exit` states for elements that mount and unmount. Use them with `AnimatePresence`.
+
+<MotionExports source={variantsSource} pattern='Variants$' />
+
+## Gesture patterns
+
+Prop bundles to spread onto a `motion.*` element for hover, press and navigation feedback.
+
+<MotionExports source={patternsSource} pattern='Pattern$' />

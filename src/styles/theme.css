@@ -133,13 +133,13 @@
 }
 
 /* ---------- Typography ----------
-   Fonts: Figma font-family/headline + /bodytext (Geist), /code (Roboto Mono).
+   Fonts: Figma font-family/headline + /bodytext (Geist), /code (Geist Mono).
    Not loaded here: the consuming app loads the webfonts (CLAUDE.md →
    "Consumer Integration"). Sizes and paired line heights: Figma font-size/* and
    line-height/*. Font weights match Tailwind's defaults, so they aren't redefined. */
 @theme {
 	--font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-	--font-mono: "Roboto Mono", ui-monospace, monospace;
+	--font-mono: "Geist Mono", ui-monospace, monospace;
 
 	--text-xs: 0.75rem;
 	--text-xs--line-height: 1.125rem;

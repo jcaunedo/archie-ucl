@@ -91,7 +91,9 @@ Skills compare every Figma URL's `fileKey` against both files in this table and 
   - `motion/`: tokens, transitions, variants, patterns, reduced-motion and scroll helpers
   - `relative-date.ts`: `formatRelativeDate()`
 - **Imports:** use the `@/` alias (`@/lib/utils`, `@/components/<category>/<name>`). Import another component through its folder `index.ts`, never a deep relative path.
-- **Docs:** Storybook MDX pages live in `src/docs/` (Introduction, Foundations). Sidebar order is Introduction → Foundations → component categories.
+- **Docs:** Storybook MDX pages live in `src/docs/`. Sidebar order (`.storybook/preview.ts`) is Introduction → Foundations → Guidelines → component categories. MDX supports GitHub-flavored Markdown tables through `remark-gfm`.
+  - **Foundations** (`foundations/`): Colors, Typography, Motion. Each is generated from source by a docs-only `.tsx` beside it (`color-tokens.tsx`, `type-scale.tsx`, `motion-tokens.tsx`) that reads `theme.css` or `src/lib/motion/` as raw text. A new token appears without editing the page.
+  - **Guidelines** (`guidelines/`): Overview, Voice and copy, Tables and lists, Page layout, Building from Figma, Developer contracts. They restate DESIGN.md (and the Figma rules above) for a wider audience. When a DESIGN.md rule changes, update its page in the same change. Add a page only for a rule DESIGN.md records, and add it to the Overview table and the sidebar order.
 
 ## Code style
 
@@ -173,7 +175,7 @@ Mirror these names when a new component has the same concept. Keep this list cur
 All tokens live in `src/styles/theme.css`:
 
 - **`@theme inline`:** maps Tailwind utilities to the CSS variables (`--color-primary: var(--primary)`), so `.dark` overrides work. Also holds radius and the `--shadow-*` scale.
-- **`@theme`:** breakpoints (set 1px past each frame width, see DESIGN.md "Breakpoints include their own width"), fonts (`--font-sans` Geist, `--font-mono` Roboto Mono) and the `--text-*` scale with paired line heights.
+- **`@theme`:** breakpoints (set 1px past each frame width, see DESIGN.md "Breakpoints include their own width"), fonts (`--font-sans` Geist, `--font-mono` Geist Mono) and the `--text-*` scale with paired line heights.
 - **`:root`:** primitives (`--gray-500`, `--vermilion-500`, …). **`:root, .dark`:** Archie (light) semantic values. **`.dark`:** Archie-dark values that differ. Colors are written in `oklch`. Don't mix formats.
 - **Semantic roles** use shadcn names: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive` (each with `-foreground`), and `border`, `input`, `ring`. Figma's extra roles sit beside them: tones (`brand`, `tone-accent`, `emphasis`, `neutral`, `info`, `success`, `warning`, `destructive`, each with `-subtle`/`-muted`, most with `-defined`/`-foreground`), surfaces (`background-subtle`, `card-muted`, `border-subtle`, `modal`, …), `icon-*`, states (`link`, `active`, `highlight`, `disabled`, `veil`), `chart-1`–`5` and `sidebar-*`. DESIGN.md → "Figma → theme.css token map" has the full map.
 - **Use semantic utilities** (`bg-brand-subtle`, `text-icon-muted`). Primitives aren't Tailwind utilities: `bg-gray-100` is Tailwind's gray, not Archie's.
@@ -320,7 +322,7 @@ npm install archie-ucl
 
 `@source` makes Tailwind scan UCL's bundled JS for class names. Without it, component styles silently go missing.
 
-UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Roboto Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
+UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Geist Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
 
 ```tsx
 import { Button } from "archie-ucl";
