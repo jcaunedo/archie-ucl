@@ -78,6 +78,100 @@ Pair each surface token with its `-foreground` token, so text always has enough 
 	/>
 </ColorPalette>
 
+## Tones
+
+Each tone has a solid color plus `-subtle` and `-muted` surfaces for tinted backgrounds. Most also have `-defined` (a stronger tint) and `-foreground` (text on the solid color). `primary` and `secondary` are built from the brand tone.
+
+<ColorPalette>
+	{[
+		["Brand", "brand", "Primary actions and brand moments", ["", "-foreground", "-subtle", "-muted", "-defined"]],
+		["Tone accent", "tone-accent", "Strong neutral emphasis (not shadcn's accent)", ["", "-foreground", "-subtle", "-muted", "-defined"]],
+		["Emphasis", "emphasis", "Highlights and unread markers", ["", "-foreground", "-subtle", "-muted", "-defined"]],
+		["Neutral", "neutral", "Neutral actions and badges", ["", "-foreground", "-subtle", "-muted", "-defined"]],
+		["Info", "info", "Informational status", ["", "-subtle", "-muted"]],
+		["Success", "success", "Positive status", ["", "-subtle", "-muted"]],
+		["Warning", "warning", "Caution status", ["", "-subtle", "-muted"]],
+		["Destructive", "destructive", "Errors and irreversible actions", ["", "-subtle", "-muted"]],
+	].map(([title, name, subtitle, steps]) => (
+		<ColorItem
+			key={name}
+			title={title}
+			subtitle={subtitle}
+			colors={Object.fromEntries(steps.map((s) => [name + s, `var(--${name}${s})`]))}
+		/>
+	))}
+</ColorPalette>
+
+## Surfaces, text and icons
+
+<ColorPalette>
+	<ColorItem
+		title='Surfaces'
+		subtitle='Backgrounds from lightest to most defined'
+		colors={{
+			"background-subtle": "var(--background-subtle)",
+			muted: "var(--muted)",
+			"background-defined": "var(--background-defined)",
+			"card-subtle": "var(--card-subtle)",
+			"card-muted": "var(--card-muted)",
+			"card-defined": "var(--card-defined)",
+			modal: "var(--modal)",
+		}}
+	/>
+	<ColorItem
+		title='Text'
+		subtitle='Default, secondary and placeholder text'
+		colors={{
+			foreground: "var(--foreground)",
+			"muted-foreground": "var(--muted-foreground)",
+			"foreground-subtle": "var(--foreground-subtle)",
+			"on-foreground": "var(--on-foreground)",
+		}}
+	/>
+	<ColorItem
+		title='Icons'
+		subtitle='Icon colors by emphasis'
+		colors={{
+			icon: "var(--icon)",
+			"icon-muted": "var(--icon-muted)",
+			"icon-subtle": "var(--icon-subtle)",
+			"icon-brand": "var(--icon-brand)",
+		}}
+	/>
+	<ColorItem
+		title='Lines'
+		subtitle='Borders, input states and focus rings'
+		colors={{
+			"border-subtle": "var(--border-subtle)",
+			"border-muted": "var(--border-muted)",
+			"input-disabled": "var(--input-disabled)",
+			"input-ring": "var(--input-ring)",
+			"ring-outside": "var(--ring-outside)",
+		}}
+	/>
+	<ColorItem
+		title='States'
+		subtitle='Links, selection, highlight and disabled'
+		colors={{
+			link: "var(--link)",
+			active: "var(--active)",
+			highlight: "var(--highlight)",
+			disabled: "var(--disabled)",
+		}}
+	/>
+	<ColorItem
+		title='Charts'
+		subtitle='Categorical series, in order'
+		colors={{
+			"chart-1": "var(--chart-1)",
+			"chart-2": "var(--chart-2)",
+			"chart-3": "var(--chart-3)",
+			"chart-4": "var(--chart-4)",
+			"chart-5": "var(--chart-5)",
+		}}
+	/>
+</ColorPalette>
+
 ## Radius
 
 All corner radii derive from one `--radius` token (`0.5rem`). Change it to adjust every component at once.

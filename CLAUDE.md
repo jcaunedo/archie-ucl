@@ -56,8 +56,8 @@ The stack is set per project so UCL matches what the Archie dev team ships. Chan
 
 | Item                    | Value                                     |
 | ----------------------- | ----------------------------------------- |
-| Design system file      | ⚠️ Not set. Add the name and `fileKey`    |
-| Modes                   | ⚠️ Not set. Light only, or light + dark?  |
+| Design system file      | `archielabs.ds`, fileKey `w8YHn6HqwgvKEyFOYkDFmW` |
+| Modes                   | Light + dark: the `semantic` collection's **Archie** mode → `:root`, **Archie-dark** → `.dark`. Its other modes (Solara, TowerLoan, Itopia, itopia-dark, AIassist, MergeIT) belong to other products and are not synced |
 
 Skills compare every Figma URL's `fileKey` against this table. Until it's set, they ask for the file before syncing tokens.
 
@@ -164,14 +164,16 @@ Mirror these names when a new component has the same concept. Keep this list cur
 
 All tokens live in `src/styles/theme.css`:
 
-- **`@theme inline`:** maps Tailwind utilities to the CSS variables (`--color-primary: var(--primary)`), so `.dark` overrides work.
-- **`@theme` breakpoints:** set 1px past each frame width. See DESIGN.md "Breakpoints include their own width".
-- **`:root`:** light values. **`.dark`:** dark values. Colors are written in `oklch`. Don't mix formats.
-- **Semantic roles** use shadcn names: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive` (each with `-foreground`), and `border`, `input`, `ring`.
-- **Radius:** one `--radius` (0.5rem). `rounded-sm/md/lg` derive from it.
-- **Spacing:** Tailwind's default 4px scale. Don't redefine it.
+- **`@theme inline`:** maps Tailwind utilities to the CSS variables (`--color-primary: var(--primary)`), so `.dark` overrides work. Also holds radius and the `--shadow-*` scale.
+- **`@theme`:** breakpoints (set 1px past each frame width, see DESIGN.md "Breakpoints include their own width"), fonts (`--font-sans` Geist, `--font-mono` Roboto Mono) and the `--text-*` scale with paired line heights.
+- **`:root`:** primitives (`--gray-500`, `--vermilion-500`, …). **`:root, .dark`:** Archie (light) semantic values. **`.dark`:** Archie-dark values that differ. Colors are written in `oklch`. Don't mix formats.
+- **Semantic roles** use shadcn names: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive` (each with `-foreground`), and `border`, `input`, `ring`. Figma's extra roles sit beside them: tones (`brand`, `tone-accent`, `emphasis`, `neutral`, `info`, `success`, `warning`, `destructive`, each with `-subtle`/`-muted`, most with `-defined`/`-foreground`), surfaces (`background-subtle`, `card-muted`, `border-subtle`, `modal`, …), `icon-*`, states (`link`, `active`, `highlight`, `disabled`, `veil`), `chart-1`–`5` and `sidebar-*`. DESIGN.md → "Figma → theme.css token map" has the full map.
+- **Use semantic utilities** (`bg-brand-subtle`, `text-icon-muted`). Primitives aren't Tailwind utilities: `bg-gray-100` is Tailwind's gray, not Archie's.
+- **Radius:** one `--radius` (0.5rem). `rounded-sm/md/lg` (4/6/8px) derive from it.
+- **Shadows:** `shadow-xs` … `shadow-2xl` follow the Figma effect styles. Their colors switch per mode.
+- **Spacing and font weights:** Tailwind's defaults already match Figma. Don't redefine them.
 
-To add a token, add it to `:root` and `.dark`, then map it in `@theme inline`. Adding a token is a minor version; renaming or removing one is breaking.
+To add a token, add it to `:root, .dark` (plus `.dark` when the dark value differs), then map it in `@theme inline`. Adding a token is a minor version; renaming or removing one is breaking.
 
 ## Motion System
 
@@ -309,6 +311,8 @@ npm install archie-ucl
 ```
 
 `@source` makes Tailwind scan UCL's bundled JS for class names. Without it, component styles silently go missing.
+
+UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Roboto Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
 
 ```tsx
 import { Button } from "archie-ucl";

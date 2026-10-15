@@ -156,3 +156,72 @@ const { resolve } = useMotionPreference();
 ⚠️ **Constraint:** never `mode="popLayout"` on table rows. It pulls the exiting row out with `position: absolute`, and a `<tr>` loses its table layout: its cells collapse while it fades.
 
 ⚠️ **Constraint:** keys are the record id, never the array index, or the wrong row fades out.
+
+---
+
+## Figma → theme.css token map (`src/styles/theme.css`)
+
+**Rule:** `theme.css` mirrors the `semantic` collection of the `archielabs.ds` Figma file, Archie mode in `:root, .dark` and Archie-dark in `.dark`. Each Figma variable maps to a CSS token by the table below. The mapping decisions are deliberate. A resync must keep them, not "fix" them back to shadcn defaults or to a literal Figma name.
+
+**Why:** the Figma file uses a tone system (`tone/<tone>/<step>`, surfaces with `subtle`/`muted`/`defined`), not shadcn's role names. Several shadcn roles have no Figma variable of their own. They're mapped to the variable the matching Figma component actually binds, and that's invisible from either file alone.
+
+**How to apply:**
+
+- Naming: drop `colors/`, join the path with `-`, and drop the repeated last segment (`colors/tone/brand/brand` → `--brand`, `colors/card/subtle` → `--card-subtle`). `on-<tone>` becomes `--<tone>-foreground`.
+- Diff every mapped variable on each sync, in both modes, against the resolved `theme.css` value. The 2026-10-15 sync checked 90 tokens × 2 modes: 0 drift.
+
+### Mapping decisions
+
+| CSS token | Figma variable | Why |
+| --- | --- | --- |
+| `--primary` / `-foreground` | `tone/brand/brand` / `tone/brand/on-brand` | Button Solid · Brand |
+| `--secondary` / `-foreground` | `tone/brand/subtle` / `tone/brand/brand` | Button Flat · Brand, Figma's only filled, non-solid button. Chosen over a neutral gray |
+| `--accent` / `-foreground` | `states/hover` / `foreground/foreground` | shadcn `accent` is the hover/selected surface. Button Ghost and Outlined hover bind `states/hover` |
+| `--destructive-foreground` | `tone/brand/on-brand` | Button Solid · Destructive binds its label to `on-brand`. There's no `on-destructive` |
+| `--muted` / `-foreground` | `background/muted` / `foreground/muted` | |
+| `--input` | `input/border` | Button Outlined stroke |
+| `--ring` | `input/ring-focus` | Focus ring. `input/ring` → `--input-ring` |
+| `--card-foreground`, `--popover-foreground` | `foreground/foreground` | No Figma variable of their own |
+| `--tone-accent*` | `tone/accent/*` | Prefixed: Figma's "accent" tone (dark gray) is not shadcn's `--accent` |
+| `--veil`, `--veil-soft` | `base/opacity-veil`, `base/opacity-soft` | Renamed: `bg-opacity-*` reads like an opacity utility |
+| `--shadow-color-sm/md/lg` | `shadow/sm/md/lg` | Colors for the `shadow-*` scale, which mirrors the effect styles |
+
+### Deliberately not mirrored
+
+- **Primitives as utilities:** only the 7 palettes the Archie modes reference (gray, vermilion, sky, info, success, warning, destructive) are declared, as `:root` variables. They aren't registered as Tailwind colors, so `bg-gray-100` stays Tailwind's gray. Components use semantic tokens. The other 15 palettes belong to other products' modes.
+- **Typography:** Geist is shipped. The Figma `font-family/headline` and `/bodytext` variables say Geist, but 52 of 55 text styles still render Inter through orphaned variables. The type scale comes from the live `font-size/*` and `line-height/*` primitives (2xl = 24/32, not the old styles' 24/36). `font-size/xxs` (11px) is skipped: it has no paired line height and no text style uses it.
+- **Not synced yet:** `code/*` (syntax colors), `decorative/decorative-1`, `linear-1A/1B` (gradient stops), the `components` collection (`inbox-unread`, `chat-bubble`, `overlay`), the `radius/*` component radii, the `Sonner` effect style, `paragraph-gap/*` and `breakpoint/width|height` (the artboard size, not a breakpoint). Add each with the component that needs it.
+- **Spacing, font weights and base radius** already equal Tailwind's defaults and `--radius: 0.5rem`, so they aren't redefined.
+
+### Archie-dark fixes made in Figma (2026-10-15)
+
+These Archie-dark values were Figma slips. They were fixed in Figma and mirrored here, so a resync stays in step:
+
+| Figma variable | Was | Now |
+| --- | --- | --- |
+| `input/border` | gray-200 | gray-700 |
+| `input/border-disabled` | gray-700 | gray-800 |
+| `input/ring-outside` | gray-50 | gray-800 |
+| `states/disabled` | gray-50 | gray-800 |
+| `states/active` | #f0f2f5 at 60% | gray-700 |
+| `sidebar/hover` | white | `states/hover` |
+| `tone/success/subtle` / `muted` | success-50 / 100 | success-900 / 800 |
+| `radius/button/sm`, `md` | 8 | 6 (same as light) |
+
+⚠️ **Decision needed:** these look off but were left as Figma has them:
+
+- `states/active-alt` is white in dark mode.
+- `icon/brand` is gray-200 in dark mode, not the brand color.
+- In dark mode, `subtle` → `muted` → `defined` gets darker for brand and warning but lighter for info, success and destructive.
+- `tone/emphasis/defined` equals `muted` in both modes.
+- `on-brand` is gray-950 on vermilion in dark mode. ⚠️ **Accessibility:** gray-950 text measures 4.18:1 on vermilion-500 and white measures 4.47:1, so both clear 3:1 for large text but neither reaches the 4.5:1 normal-text minimum. This affects light mode too: the primary button's white label is 4.47:1.
+
+---
+
+## Semantic tokens are declared on `:root, .dark` (`src/styles/theme.css`)
+
+**Rule:** the Archie (light) semantic block uses the selector `:root, .dark`, not just `:root`. The `.dark` block after it overrides only the values that differ.
+
+**Why:** many tokens are aliases, such as `--primary: var(--brand)`. A custom property's `var()` resolves on the element that declares it, and descendants inherit the result. If the aliases were declared only on `:root` and `.dark` were applied to a wrapper below `<html>` (a Storybook decorator, a dark section), `--primary` would keep the light brand values inside it. Redeclaring the aliases on `.dark` makes them resolve against the dark values there.
+
+**How to apply:** add new semantic tokens to the `:root, .dark` block. Add them to `.dark` too only when the dark value differs. Keep `.dark` after the shared block, because both selectors have the same specificity. Primitives stay in plain `:root`.
