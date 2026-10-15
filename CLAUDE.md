@@ -2,6 +2,12 @@
 
 Shared React component library for Archie frontend applications. Built with React 19, Tailwind CSS 4, shadcn/ui (Radix) and TypeScript.
 
+This repo is where Archie's product design happens. It holds:
+
+- design decisions and the rationale behind them (DESIGN.md, `product-specs/`)
+- prototypes
+- production-ready frontend components and layouts
+
 ## Project
 
 Everything specific to this project is in this section, "Stack", "Figma", and DESIGN.md → "Brand names" / "Brand voice". The rest of the setup is project-agnostic.
