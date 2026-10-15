@@ -55,12 +55,16 @@ function parseColorGroups(css: string): ColorGroup[] {
 const describe = (value: string | undefined) => value?.replace(/^var\(--([\w-]+)\)$/, "$1") ?? "";
 
 function Swatch({ value, dark }: { value: string; dark?: boolean }) {
-	const swatch = (
-		<div className='size-10 shrink-0 rounded-md border border-border' style={{ background: value }} />
+	// The outer border stays outside `.dark`, so both swatches share the page's light border. The fill re-resolves
+	// inside `.dark`, where semantic tokens are redeclared (DESIGN.md "Semantic tokens are declared on `:root, .dark`"),
+	// over that mode's own background, so translucent tokens (`muted`, `veil`, `highlight`) read as they do in an app.
+	return (
+		<div className='size-10 shrink-0 overflow-hidden rounded-md border border-border'>
+			<div className={dark ? "dark size-full bg-background" : "size-full bg-background"}>
+				<div className='size-full' style={{ background: value }} />
+			</div>
+		</div>
 	);
-	// Semantic tokens are redeclared on `.dark`, so they re-resolve inside this wrapper (DESIGN.md "Semantic tokens
-	// are declared on `:root, .dark`").
-	return dark ? <div className='dark rounded-md bg-background p-1'>{swatch}</div> : <div className='p-1'>{swatch}</div>;
 }
 
 /** Every semantic color token, grouped as in `theme.css`, with its Archie and Archie-dark values side by side. */
