@@ -54,12 +54,20 @@ The stack is set per project so UCL matches what the Archie dev team ships. Chan
 
 ## Figma
 
+The design system is split across two files:
+
 | Item                    | Value                                     |
 | ----------------------- | ----------------------------------------- |
-| Design system file      | `archielabs.ds`, fileKey `w8YHn6HqwgvKEyFOYkDFmW` |
-| Modes                   | Light + dark: the `semantic` collection's **Archie** mode → `:root`, **Archie-dark** → `.dark`. Its other modes (Solara, TowerLoan, Itopia, itopia-dark, AIassist, MergeIT) belong to other products and are not synced |
+| Master design system    | `archielabs.ds`, fileKey `w8YHn6HqwgvKEyFOYkDFmW`. Generic tokens and components shared by every project that uses it, with a mode per project |
+| Archie design system    | `archie.ds`, fileKey `fNWSwWgNnAh58GfSb0p76X`. Components only Archie uses, built on the master's tokens |
+| Modes                   | Light + dark: the master's `semantic` collection's **Archie** mode → `:root`, **Archie-dark** → `.dark`. Its other modes (Solara, TowerLoan, Itopia, itopia-dark, AIassist, MergeIT) belong to other products and are not synced |
 
-Skills compare every Figma URL's `fileKey` against this table. Until it's set, they ask for the file before syncing tokens.
+- **Tokens** (`theme.css`) come only from `archielabs.ds`, Archie modes only.
+- **Components** can come from either file. Shared components come from `archielabs.ds` and Archie-only ones from `archie.ds`. Both land in the same `src/components/<category>/` folders. A component in `archie.ds` that overrides a master component wins for UCL.
+- ⚠️ If `archie.ds` uses a variable that isn't in the master's `semantic` collection, flag it before adding a token. Archie-only tokens must not leak into the shared master.
+- ⚠️ **Status (Oct 15, 2026):** `archie.ds` has only a cover frame, no components yet, and doesn't use `archielabs.ds` as a library. Until it does, its components can't reference the master's variables. Check this before the first component sync from `archie.ds`.
+
+Skills compare every Figma URL's `fileKey` against both files in this table and flag any other file before proceeding.
 
 ## Architecture
 
