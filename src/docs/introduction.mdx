@@ -4,53 +4,183 @@ import { Meta, Source } from "@storybook/addon-docs/blocks";
 
 # Archie UCL
 
-The React component library for Archie. Components are built with React 19, Tailwind CSS 4, and Radix UI, and follow shadcn/ui conventions.
+The React component library for Archie. It holds the shared UI components and the design tokens (colors, type, spacing, motion) that every Archie frontend app uses. Components are built with React 19, Tailwind CSS 4 and Radix UI, and follow shadcn/ui conventions.
 
-## Installation
+## How UCL works
 
-<Source language='bash' code={`npm install archie-ucl`} />
+- **One repo, many apps.** UCL lives in its own repo, separate from the apps that use it. Apps install it like any other dependency.
+- **One package, three parts.** The build compiles the library into `dist/`: the components (`index.js`, ESM only), their type definitions (`index.d.ts`), and the design tokens (`styles.css`, imported as `@jcaunedo/archie-ucl/styles`).
+- **Built and reviewed here.** Every component has stories for its states, so design and engineering review the same thing before any app uses it.
+- **Published to GitHub Packages** as `@jcaunedo/archie-ucl`. CI publishes a new version when someone bumps it on purpose (see "Releasing" below).
 
-`react` and `react-dom` 19 are peer dependencies.
+## Use UCL in an app
 
-## Set up styles
+### 1. Point the app at GitHub Packages
 
-The package ships its design tokens in `archie-ucl/styles`. Import them after Tailwind in your global stylesheet, and point Tailwind at the package so it generates the classes the components use.
+UCL is published to GitHub Packages, not the public npm registry. Add an `.npmrc` at the app's root so npm fetches the `@jcaunedo` scope from there:
+
+<Source
+	language='ini'
+	code={`@jcaunedo:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=\${NPM_TOKEN}`}
+/>
+
+`NPM_TOKEN` is a GitHub personal access token (classic) with the `read:packages` scope. GitHub Packages asks for a token even to install public packages.
+
+- **Locally:** create the token at GitHub → Settings → Developer settings → Personal access tokens, and export it in your shell (`export NPM_TOKEN=…`). Never commit it: the `.npmrc` only names the variable.
+- **In the app's CI and hosting:** add the same token as a secret named `NPM_TOKEN`.
+
+### 2. Install
+
+<Source language='bash' code={`npm install @jcaunedo/archie-ucl`} />
+
+`react` and `react-dom` 19 are peer dependencies: the app provides them, so it doesn't get two copies of React.
+
+### 3. Import the styles
+
+The package ships its design tokens in `@jcaunedo/archie-ucl/styles`. Import them after Tailwind in the app's global stylesheet, and point Tailwind at the package so it generates the classes the components use.
 
 <Source
 	language='css'
 	code={`@import "tailwindcss";
-@import "archie-ucl/styles";
+@import "@jcaunedo/archie-ucl/styles";
 
-@source "../node_modules/archie-ucl/dist";`}
+@source "../node_modules/@jcaunedo/archie-ucl/dist";`}
 />
 
-Adjust the `@source` path so it is relative to your stylesheet.
+Adjust the `@source` path so it's relative to the stylesheet. **Without it, component styles go missing without any error.**
 
-## Use a component
+### 4. Load the fonts
+
+UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Geist Mono** (400–700), for example with `next/font/google` or a Google Fonts `<link>`. Without them, text falls back to the system font.
+
+### 5. Use a component
 
 <Source
 	language='tsx'
-	code={`import { Button } from "archie-ucl";
+	code={`import { Button } from "@jcaunedo/archie-ucl";
 
 export function Example() {
   return <Button>Continue</Button>;
 }`}
 />
 
-## Dark mode
+### Dark mode
 
 Add the `dark` class to a parent element, usually `<html>`, to switch every token to its dark value.
 
-## Merging classes
+### Merging classes
 
 Every component accepts `className`. Use the exported `cn()` helper to merge classes in your own components. It resolves Tailwind conflicts, so the last class wins.
 
 <Source
 	language='tsx'
-	code={`import { cn } from "archie-ucl";
+	code={`import { cn } from "@jcaunedo/archie-ucl";
 
 <div className={cn("p-4", isActive && "bg-accent")} />`}
 />
+
+## Develop UCL
+
+<Source
+	language='bash'
+	code={`npm install
+npm run storybook`}
+/>
+
+| Command | Description |
+| --- | --- |
+| `npm run storybook` | Launch Storybook on port 6006 |
+| `npm run build` | Build the library to `dist/` |
+| `npm run dev` | Build in watch mode |
+| `npm run lint` | Type-check with TypeScript |
+| `npm run build-storybook` | Build the static Storybook site |
+
+Each component lives in its own folder, `src/components/<category>/<name>/`, with its stories and an `index.ts`, and is re-exported from `src/index.ts`. `CLAUDE.md` has the full conventions, and `DESIGN.md` has the design rules a change must keep.
+
+### Day-to-day flow
+
+1. **Build or update the component in Storybook**, with a story for every state: default, hover, disabled, error, loading, empty, and so on.
+2. **Export it** from `src/index.ts` so apps can import it.
+3. **Get it reviewed.** Design reviews it in Storybook, and engineering reviews the code in the PR. Run `npm run lint` and `npm run build` before you open the PR. Then merge it to `main`.
+4. **Release a new version** (see "Releasing" below).
+5. **Update each app.** Bump `@jcaunedo/archie-ucl` to the new version, check the screens that use the changed components, and ship the app through its normal deploy.
+
+ℹ️ A new UCL version never changes a live site by itself. Production only changes when an app installs the new version and deploys.
+
+### Try unpublished changes in an app
+
+To test UCL changes in an app before releasing them, install UCL from a local path:
+
+<Source
+	language='bash'
+	code={`# In archie-ucl
+npm run dev                       # rebuilds dist/ on every change
+
+# In the app
+npm install ../archie-ucl         # a local path dependency`}
+/>
+
+- Point the app's `@source` at the linked package's `dist/` folder, or Tailwind won't see the new classes.
+- A linked UCL can load its own copy of React from `archie-ucl/node_modules`. If the app shows an "Invalid hook call" error, that's the cause: use `npx yalc publish` in UCL and `npx yalc add @jcaunedo/archie-ucl` in the app instead, which copies the package rather than linking it.
+
+## Releasing
+
+**Publishing is automated but deliberate.** `.github/workflows/publish.yml` runs when `package.json` changes on `main`. It publishes **only when that version isn't in the registry yet**, so normal merges release nothing. A release happens only when someone bumps the version on purpose, so the registry stays clean and every release is intentional. You can also run it by hand from the repo's Actions tab.
+
+### Release scripts
+
+`package.json` scripts, so a release is one command:
+
+| Script | What it does |
+| --- | --- |
+| `"preversion": "npm run lint"` | Runs the type check first. If it fails, the release stops |
+| `"postversion": "npm run build"` | Rebuilds the package after the version bump |
+| `"release:patch": "npm version patch"` | Bumps the version, commits and tags it (e.g. `v1.4.3`) |
+| `"release:minor": "npm version minor"` | Same, for a minor version |
+| `"release:major": "npm version major"` | Same, for a major version |
+
+<Source
+	language='bash'
+	code={`# The working tree must be clean: commit your work first.
+npm run release:patch             # or release:minor / release:major
+git push && git push --tags       # CI publishes the new version`}
+/>
+
+### Which version to bump
+
+| Bump | Example | Use it for |
+| --- | --- | --- |
+| **Patch** | 1.4.2 → 1.4.3 | Bug fixes and visual tweaks that don't change how a component is used: padding, a color, an accessibility fix |
+| **Minor** | 1.4.2 → 1.5.0 | New things that don't break existing use: a new component, optional prop, variant or design token |
+| **Major** | 1.4.2 → 2.0.0 | Anything that can break an app: removing or renaming a component, prop or token, changing a default, or requiring a newer React |
+
+ℹ️ Below 1.0.0, package managers treat a minor bump (0.7 → 0.8) as breaking, so apps don't pick it up automatically. UCL is at 0.1.0 today, so every minor release needs a manual update in each app.
+
+### Moving UCL to a company org
+
+UCL is published under a personal GitHub account for now. When Archie has a GitHub organization that should own it, move it there. Plan it as a breaking release:
+
+1. **Transfer the repo** to the org (repo Settings → Transfer). GitHub redirects the old URL, and issues and history move with it.
+2. **Rename the package** to `@<org>/archie-ucl`. GitHub Packages only accepts a scope that matches the repo owner, so the name has to change. Update `name` and `repository` in `package.json`, the workflow's name, and the docs.
+3. **Release it as a major version.** Every app's imports change, so it's breaking even if no component did.
+4. **Point the old package at the new one.** Stop releasing `@jcaunedo/archie-ucl`, and make the old repo's README (or a last patch release's description) name the new package, so anyone who finds it knows where it moved.
+5. **Update each app:** the scope line in `.npmrc`, `@jcaunedo/archie-ucl` → `@<org>/archie-ucl` in imports, the `@import` and `@source` paths, and the dependency in `package.json`.
+
+What the org adds:
+
+- **Access through teams, not people.** Package permissions follow org teams, so access doesn't depend on one person's account, and people who leave lose access automatically.
+- **Shared tokens.** Apps' CI can use an org-level secret instead of each developer's personal token. Apps in the same org can be granted read access to the package directly (package settings → Manage Actions access), so their CI uses its built-in `GITHUB_TOKEN`.
+- **Room for more packages.** Other shared code (for example an icon set or a lint config) can publish under the same scope.
+
+ℹ️ The fewer apps use UCL when it moves, the less there is to update. If an org is likely, move before the first app goes to production.
+
+## Things to know
+
+- **Never copy token values into an app.** Use the semantic Tailwind utilities that `@jcaunedo/archie-ucl/styles` provides (`bg-primary`, `text-muted-foreground`). Tokens change in UCL, and apps pick them up with the next version.
+- **Tailwind must scan UCL.** If components render unstyled, the app's `@source` line is missing or points to the wrong folder.
+- **Server rendering.** ⚠️ If an app renders on the server (e.g. Next.js Server Components), the UCL bundle must be marked `"use client"` in a post-build step. That step doesn't exist yet. Add it before the first server-rendered app uses UCL.
+- **Peer dependencies stay peers.** React is a peer dependency so apps don't get two copies. ⚠️ **Decision needed:** React Hook Form and Zod are bundled today. If the apps use them too, they should become peer dependencies.
 
 ## What's here
 

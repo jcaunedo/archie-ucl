@@ -31,7 +31,7 @@ Each entry says what the rule is, why it exists, and how to apply it. Don't rest
 
 **Why:** the names are separate products with separate audiences, so a mix-up in copy points people at the wrong thing.
 
-**How to apply:** when copy says "Archie" and the context could mean Core or Labs, ask which one. Identifiers that aren't user-facing (the `archie-ucl` package, CSS/JS names) keep their lowercase forms.
+**How to apply:** when copy says "Archie" and the context could mean Core or Labs, ask which one. Identifiers that aren't user-facing (the `@jcaunedo/archie-ucl` package, the `archie-ucl` repo, CSS/JS names) keep their lowercase forms.
 
 ---
 

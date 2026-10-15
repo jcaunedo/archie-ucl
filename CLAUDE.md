@@ -9,7 +9,7 @@ Everything specific to this project is in this section, "Stack", "Figma", and DE
 | Item         | Value                                                        |
 | ------------ | ------------------------------------------------------------ |
 | Project      | Archie                                                       |
-| Package      | `archie-ucl`                                                 |
+| Package      | `@jcaunedo/archie-ucl` (repo `archie-ucl`)                          |
 | Apps         | ⚠️ Not defined. List the apps that consume UCL (used for `src/layouts/<app>/`) |
 | Brand        | DESIGN.md → "Brand names", "Brand voice"                     |
 
@@ -71,10 +71,10 @@ Skills compare every Figma URL's `fileKey` against both files in this table and 
 
 ## Architecture
 
-- **Package:** `archie-ucl`, ESM-only. Not published yet (see "Release & Publishing").
+- **Package:** `@jcaunedo/archie-ucl`, ESM-only, published to GitHub Packages (see "Release & Publishing").
 - **Build:** tsup bundles `src/index.ts` → `dist/index.js` + `dist/index.d.ts`. `src/styles/theme.css` is copied raw to `dist/styles.css`.
 - **Styling:** two CSS files.
-  - `src/styles/theme.css`: design tokens, `@theme inline` mappings, breakpoints, `:root` and `.dark` variables. Ships to consumers as `archie-ucl/styles`.
+  - `src/styles/theme.css`: design tokens, `@theme inline` mappings, breakpoints, `:root` and `.dark` variables. Ships to consumers as `@jcaunedo/archie-ucl/styles`.
   - `src/styles/globals.css`: imports Tailwind + `theme.css`. Used only by Storybook.
 - **Components:** one folder per component, grouped by category under `src/components/<category>/<name>/`. Each folder holds:
   - `<name>.tsx`
@@ -296,28 +296,35 @@ After motion work, check that:
 
 ## Release & Publishing
 
-⚠️ **Not set up yet.** The intended flow:
-
-- **Registry:** a private registry (e.g. GitHub Packages). Apps get a small `.npmrc` scoping the package to it, plus a read-only token.
-- **Version bump:** `npm run release:patch|minor|major` (wrapping `npm version`). `preversion` runs `npm run lint` and `postversion` runs `npm run build`.
-- **Publish:** CI publishes only when the version in `package.json` changes on the main branch. Normal merges release nothing.
+- **Registry:** GitHub Packages, under the repo owner's scope: `@jcaunedo/archie-ucl` (`publishConfig` in `package.json`). GitHub Packages only accepts a package whose scope matches the repo owner.
+- **Version bump:** `npm run release:patch|minor|major` (wrapping `npm version`). `preversion` runs `npm run lint` and `postversion` runs `npm run build`. The working tree must be clean. Then `git push && git push --tags`.
+- **Publish:** `.github/workflows/publish.yml` runs when `package.json` changes on `main` (or by hand from the Actions tab). It publishes only when that version isn't in the registry yet, so normal merges release nothing.
+- **Apps:** each app has an `.npmrc` mapping `@jcaunedo` to `https://npm.pkg.github.com`, plus a token with `read:packages` (see "Consumer Integration").
 - **Semver:**
   - **Patch:** fixes and visual tweaks.
   - **Minor:** new components, optional props, variants or tokens.
   - **Major:** removing or renaming a component, prop or token, or changing a default.
   - Below 1.0.0, a minor bump is treated as breaking by package managers.
+- **Moving to a company org:** ℹ️ the package lives under a personal account for now. Moving the repo to an org renames the package to `@<org>/archie-ucl`, which is a breaking change for every app. README.md → "Moving UCL to a company org" has the steps. The fewer apps use UCL, the cheaper the move.
 
 ## Consumer Integration
 
+Each app first maps the `@jcaunedo` scope to GitHub Packages in an `.npmrc` at its root, and sets `NPM_TOKEN` to a GitHub personal access token (classic) with the `read:packages` scope:
+
+```ini
+@jcaunedo:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+```
+
 ```bash
-npm install archie-ucl
+npm install @jcaunedo/archie-ucl
 ```
 
 ```css
 /* In the consuming app's global CSS */
 @import "tailwindcss";
-@import "archie-ucl/styles";
-@source "../node_modules/archie-ucl/dist";
+@import "@jcaunedo/archie-ucl/styles";
+@source "../node_modules/@jcaunedo/archie-ucl/dist";
 ```
 
 `@source` makes Tailwind scan UCL's bundled JS for class names. Without it, component styles silently go missing.
@@ -325,7 +332,7 @@ npm install archie-ucl
 UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Geist Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
 
 ```tsx
-import { Button } from "archie-ucl";
+import { Button } from "@jcaunedo/archie-ucl";
 ```
 
 ## product-specs writing conventions

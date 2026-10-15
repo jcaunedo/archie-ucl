@@ -9,4 +9,10 @@
 	body {
 		@apply bg-background font-sans text-foreground;
 	}
+
+	/* Tailwind's preflight removes list markers. Storybook's docs styles restore them on `ul`
+	   but not `ol`, so numbered steps in the MDX pages lost their numbers. */
+	.sbdocs ol {
+		list-style: decimal;
+	}
 }

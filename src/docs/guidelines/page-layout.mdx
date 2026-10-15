@@ -23,7 +23,7 @@ So a window exactly 1024px wide gets the "1024 and below" layout, and the next l
 
 **For developers:** `theme.css` registers each Tailwind breakpoint 1px past its frame (`--breakpoint-lg: 1025px`), so write the usual classes: `lg:` means above 1024 and `max-lg:` means 1024 and below. Never write an arbitrary `min-[1025px]:`. In JavaScript, use `mediaAbove("lg")` from `@/lib/breakpoints` with `useMediaQuery` from `@/lib/hooks/use-media-query`, not a hand-written media query. Keep `theme.css` and `src/lib/breakpoints.ts` in sync.
 
-⚠️ **Constraint:** `theme.css` ships to consumers as `archie-ucl/styles`, so apps' own `sm:` to `3xl:` classes follow these boundaries too.
+⚠️ **Constraint:** `theme.css` ships to consumers as `@jcaunedo/archie-ucl/styles`, so apps' own `sm:` to `3xl:` classes follow these boundaries too.
 
 ## Page shells
 

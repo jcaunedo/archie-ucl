@@ -1,5 +1,5 @@
 {
-	"name": "archie-ucl",
+	"name": "@jcaunedo/archie-ucl",
 	"version": "0.1.0",
 	"type": "module",
 	"description": "React component library for Archie",
@@ -19,13 +19,25 @@
 	"sideEffects": [
 		"**/*.css"
 	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jcaunedo/archie-ucl.git"
+	},
+	"publishConfig": {
+		"registry": "https://npm.pkg.github.com"
+	},
 	"scripts": {
 		"build": "tsup && cp src/styles/theme.css dist/styles.css",
 		"dev": "tsup --watch",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
 		"lint": "tsc --noEmit",
-		"clean": "rm -rf dist"
+		"clean": "rm -rf dist",
+		"preversion": "npm run lint",
+		"postversion": "npm run build",
+		"release:patch": "npm version patch",
+		"release:minor": "npm version minor",
+		"release:major": "npm version major"
 	},
 	"peerDependencies": {
 		"react": "^19.0.0",
