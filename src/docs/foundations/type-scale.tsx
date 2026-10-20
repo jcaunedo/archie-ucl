@@ -16,8 +16,8 @@ function readTokens(css: string, prefix: string) {
 
 const toPx = (rem: string) => (rem.endsWith("rem") ? `${parseFloat(rem) * 16}px` : rem);
 
-/** Tailwind's default weights, which already equal Figma's `font-weight/*` primitives, so `theme.css` doesn't redefine them. */
-const WEIGHTS = [
+/** Tailwind's default weights. `theme.css` overrides some of them (`--font-weight-*`); the rest keep these values. */
+const TAILWIND_WEIGHTS = [
 	["light", 300],
 	["normal", 400],
 	["medium", 500],
@@ -71,32 +71,42 @@ function TypeScale({ css }: { css: string }) {
 	);
 }
 
-/** One row per font weight, with its utility and a sample. */
-function FontWeights() {
+/** One row per font weight: its utility, UCL's value (from `--font-weight-*` in `theme.css`), Tailwind's, and a sample. */
+function FontWeights({ css }: { css: string }) {
+	const overrides = readTokens(css, "font-weight");
 	return (
 		<table className='sb-unstyled w-full border-collapse text-left text-sm' style={{ tableLayout: "fixed" }}>
 			<colgroup>
 				<col style={{ width: 160 }} />
-				<col style={{ width: 96 }} />
+				<col style={{ width: 80 }} />
+				<col style={{ width: 120 }} />
 				<col />
 			</colgroup>
 			<thead>
 				<tr>
 					<th className={head}>Utility</th>
-					<th className={head}>Value</th>
+					<th className={head}>UCL</th>
+					<th className={head}>Tailwind default</th>
 					<th className={head}>Sample</th>
 				</tr>
 			</thead>
 			<tbody>
-				{WEIGHTS.map(([name, value]) => (
-					<tr key={name}>
-						<td className={`${cell} font-mono`}>font-{name}</td>
-						<td className={`${cell} font-mono text-muted-foreground`}>{value}</td>
-						<td className={`${cell} truncate text-base text-foreground`} style={{ fontWeight: value }}>
-							{SAMPLE}
-						</td>
-					</tr>
-				))}
+				{TAILWIND_WEIGHTS.map(([name, tailwind]) => {
+					const value = Number(overrides.get(name) ?? tailwind);
+					const changed = value !== tailwind;
+					return (
+						<tr key={name}>
+							<td className={`${cell} font-mono`}>font-{name}</td>
+							<td className={`${cell} font-mono ${changed ? "text-foreground" : "text-muted-foreground"}`} style={{ fontWeight: changed ? 650 : undefined }}>
+								{value}
+							</td>
+							<td className={`${cell} font-mono text-muted-foreground`}>{changed ? tailwind : "same"}</td>
+							<td className={`${cell} truncate text-base text-foreground`} style={{ fontWeight: value }}>
+								{SAMPLE}
+							</td>
+						</tr>
+					);
+				})}
 			</tbody>
 		</table>
 	);

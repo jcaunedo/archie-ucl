@@ -8,3 +8,6 @@ storybook-static/
 # Local Claude Code skills & commands (not shared)
 .claude/skills/
 .claude/commands/
+
+# Vitest coverage reports
+coverage/

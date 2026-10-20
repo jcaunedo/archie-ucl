@@ -1,0 +1,109 @@
+import { Meta, Canvas, Controls, Source } from "@storybook/addon-docs/blocks";
+
+import * as TypographyStories from "./typography.stories";
+
+<Meta of={TypographyStories} />
+
+# Typography
+
+Text in Archie's type scale. Choose the element for meaning with `as`, and the look with `size` and `weight`. It maps one to one to the archielabs.ds text styles: Figma's `lg/lg -semibold` is `size="lg" weight="semibold"`.
+
+ℹ️ This page, the spec comment in `typography.tsx` and [Foundations → Typography](?path=/docs/foundations-typography--docs) together are the full typography spec. They change together.
+
+## Fonts
+
+**Geist** (`font-sans`) for all interface text and **Geist Mono** (`font-mono`) for code. No letter spacing at any size, and no separate display font. Apps load Geist as a variable font (`wght@100..900`) so the weights below render exactly.
+
+<Canvas of={TypographyStories.Default} />
+
+<Controls of={TypographyStories.Default} />
+
+## Usage
+
+<Source
+	language='tsx'
+	code={`import { Typography } from "@jcaunedo/archie-ucl";
+
+<Typography as='h1' size='3xl'>Your apps</Typography>
+<Typography className='text-muted-foreground'>Every app you've generated with Archie.</Typography>`}
+/>
+
+## Sizes
+
+`size` sets the font size and line height from the `--text-*` tokens.
+
+| `size` | Font size / line height (px) | Figma text style |
+| --- | --- | --- |
+| `xs` | 12 / 18 | `xs/xs` |
+| `sm` | 14 / 20 | `sm/sm` |
+| `base` | 16 / 24 | `base/base` |
+| `lg` | 18 / 28 | `lg/lg` |
+| `xl` | 20 / 30 | `xl/xl` |
+| `2xl` | 24 / 32 | `2xl/2xl` |
+| `3xl` | 30 / 36 | `3xl/3xl` |
+| `4xl` | 36 / 54 | `4xl/4xl` |
+| `5xl` | 48 / 64 | `5xl/5xl` |
+| `6xl` | 64 / 96 | `6xl/6xl` |
+| `7xl` | 80 / 120 | `7xl/7xl` |
+
+<Canvas of={TypographyStories.Sizes} />
+
+Every Figma text style binds its size and line height to the `font-size/*` and `line-height/*` primitives, so these values match Figma exactly.
+
+## Weights
+
+UCL's weights are lighter than Tailwind's from regular to bold, so each Figma weight maps to a lighter number. `body` uses the regular weight, so all text is 350 at every size unless `weight` (or a `font-*` utility) is set:
+
+| `weight` | Utility | UCL | Tailwind | Figma text style |
+| --- | --- | --- | --- | --- |
+| `regular` | `font-normal` | **350** | 400 | `<size>/<size>` |
+| `medium` | `font-medium` | **450** | 500 | `-medium` |
+| `semibold` | `font-semibold` | **550** | 600 | `-semibold` |
+| `bold` | `font-bold` | **650** | 700 | `-bold` |
+| `black` | `font-black` | 900 | 900 | `-black` |
+
+`font-light` is **280** (Tailwind 300). Typography has no `light` weight because Figma has no light text style; use the utility directly when a design calls for it.
+
+<Canvas of={TypographyStories.Weights} />
+
+The values come from the `--font-weight-*` tokens in `theme.css`, so the `font-*` utilities use the same scale outside Typography. The [Typography foundations page](?path=/docs/foundations-typography--docs) lists every token.
+
+- Use `weight` (or the named `font-*` utilities). Never write `font-[500]` or `font-[700]` to get Tailwind's values back.
+- Geist must load as a variable font (`wght@100..900`). With a fixed list of weights, 280–650 round to the nearest loaded one.
+- Figma's `semantic` → `font-weight/*` variables match these values in the Archie modes (per mode, so each product can set its own). All 55 text styles bind their weight to them.
+
+## Headings
+
+`as="h1"`–`"h4"` without `size` or `weight` uses the heading defaults (`typographyHeadings`):
+
+| Element | `size` / `weight` | Figma |
+| --- | --- | --- |
+| `h1` | `2xl` / `bold` | `2xl/2xl -bold`, "h1, Modal Title" |
+| `h2` | `xl` / `bold` | Not tagged yet (product decision) |
+| `h3` | `lg` / `bold` | Not tagged yet (product decision) |
+| `h4` | `base` / `bold` | Not tagged yet (product decision) |
+
+<Canvas of={TypographyStories.Headings} />
+
+A page title is Figma's `3xl/3xl -bold` ("Page Title"). It's still the page's `h1`, one size larger:
+
+<Canvas of={TypographyStories.PageTitle} />
+
+Pass `size` or `weight` only when a Figma frame binds something else. Pick the heading level for the page's structure, not for its look.
+
+## Color
+
+Typography never sets a color. Pass a text token in `className`.
+
+<Canvas of={TypographyStories.WithColor} />
+
+## All text styles
+
+Every archielabs.ds text style: 11 sizes × 5 weights.
+
+<Canvas of={TypographyStories.AllVariants} />
+
+## Accessibility
+
+- Use real heading elements (`as="h1"`–`"h6"`) for headings, in order, so screen readers can navigate the page by them.
+- Don't use a heading element just for a big, bold look. Use `as="p"` with `size` and `weight` instead.

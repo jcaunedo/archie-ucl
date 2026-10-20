@@ -60,7 +60,7 @@ Adjust the `@source` path so it's relative to the stylesheet. **Without it, comp
 
 ### 4. Load the fonts
 
-UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Geist Mono** (400–700), for example with `next/font/google` or a Google Fonts `<link>`. Without them, text falls back to the system font.
+UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (variable, weights 100–900) and **Geist Mono** (400–700), for example with `next/font/google` or a Google Fonts `<link>`. Without them, text falls back to the system font.
 
 ### 5. Use a component
 
@@ -104,7 +104,7 @@ npm run storybook`}
 | `npm run lint` | Type-check with TypeScript |
 | `npm run build-storybook` | Build the static Storybook site |
 
-Each component lives in its own folder, `src/components/<category>/<name>/`, with its stories and an `index.ts`, and is re-exported from `src/index.ts`. `CLAUDE.md` has the full conventions, and `DESIGN.md` has the design rules a change must keep.
+Each component lives in its own folder, `src/components/<category>/<name>/`, with its stories and an `index.ts`, and is re-exported from `src/index.ts`. `CLAUDE.md` has the full conventions, `DESIGN.md` has the design rules a change must keep, and `MOTION.md` has the motion rules.
 
 ### Day-to-day flow
 

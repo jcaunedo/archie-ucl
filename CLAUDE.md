@@ -21,9 +21,10 @@ Everything specific to this project is in this section, "Stack", "Figma", and DE
 
 ## How the rules work
 
-- **CLAUDE.md** (this file): how things are built here. Covers the stack, folder structure, component and story conventions, the motion system and theme tokens.
+- **CLAUDE.md** (this file): how things are built here. Covers the stack, folder structure, component and story conventions and theme tokens.
+- **[MOTION.md](MOTION.md)**: the motion system. Covers principles, the named patterns, component guidance, accessibility and validation. Read it before any animation work. The values live in `src/lib/motion/`.
 - **[DESIGN.md](DESIGN.md)**: design contracts. Covers why a component is built the way it is, rules that a future edit or Figma/shadcn resync could silently break, and the brand voice.
-- **Skills** in `.claude/skills/` (`ucl-ds-sync`, `ucl-generate-component`, `ucl-generate-layout`, `ucl-ux-copywriter`) are project-agnostic. They read both files before they start and take every project value (package, Figma file, categories, apps, component APIs, voice) from them. **When a skill and these files disagree, these files win.**
+- **Skills** in `.claude/skills/` (`ucl-ds-sync`, `ucl-generate-component`, `ucl-generate-layout`, `ucl-ux-copywriter`) are project-agnostic. They read CLAUDE.md and DESIGN.md before they start (plus MOTION.md when the work involves animation) and take every project value (package, Figma file, categories, apps, component APIs, voice) from them. **When a skill and these files disagree, these files win.**
 - **Not defined here?** Ask, then record the answer in the right file so the next run doesn't have to ask again.
 
 ## Quick Reference
@@ -35,6 +36,8 @@ Everything specific to this project is in this section, "Stack", "Figma", and DE
 | `npm run storybook`       | Launch Storybook on port 6006                |
 | `npm run build-storybook` | Build static Storybook site                  |
 | `npm run lint`            | Type-check with `tsc --noEmit`               |
+| `npm test`                | Run every story as a test (Vitest, headless Chromium) |
+| `npm run test:watch`      | Same, re-running on change                   |
 
 `.npmrc` sets `include=dev`, so installs keep dev dependencies even when `NODE_ENV=production` is set in the environment.
 
@@ -54,6 +57,7 @@ The stack is set per project so UCL matches what the Archie dev team ships. Chan
 | App rendering        | Unknown: client-only or server rendering (Next.js)         | ⚠️ Ask dev team            |
 | Build                | tsup, ESM only                                             | Set                        |
 | Workbench            | Storybook 10 (`@storybook/react-vite`, `addon-docs`)       | Set                        |
+| Tests                | `@storybook/addon-vitest`: Vitest 5 + Playwright (Chromium) runs each story as a test | Set |
 
 - **Forms:** if the apps also use react-hook-form/zod, make them peer dependencies so apps don't get two copies.
 - **Server rendering:** if the apps render on the server (e.g. Next.js Server Components), the build needs a post-build step that marks the bundle `"use client"`.
@@ -66,12 +70,13 @@ The design system is split across two files:
 | ----------------------- | ----------------------------------------- |
 | Master design system    | `archielabs.ds`, fileKey `w8YHn6HqwgvKEyFOYkDFmW`. Generic tokens and components shared by every project that uses it, with a mode per project |
 | Archie design system    | `archie.ds`, fileKey `fNWSwWgNnAh58GfSb0p76X`. Components only Archie uses, built on the master's tokens |
-| Modes                   | Light + dark: the master's `semantic` collection's **Archie** mode → `:root`, **Archie-dark** → `.dark`. Its other modes (Solara, TowerLoan, Itopia, itopia-dark, AIassist, MergeIT) belong to other products and are not synced |
+| Modes                   | Light + dark: the master's `semantic` collection's **Archie** mode → `:root`, **Archie-dark** → `.dark`. Its other modes (Itopia, itopia-dark as of Oct 20, 2026) belong to other products and are not synced |
 
 - **Tokens** (`theme.css`) come only from `archielabs.ds`, Archie modes only.
 - **Components** can come from either file. Shared components come from `archielabs.ds` and Archie-only ones from `archie.ds`. Both land in the same `src/components/<category>/` folders. A component in `archie.ds` that overrides a master component wins for UCL.
 - ⚠️ If `archie.ds` uses a variable that isn't in the master's `semantic` collection, flag it before adding a token. Archie-only tokens must not leak into the shared master.
-- ⚠️ **Status (Oct 15, 2026):** `archie.ds` has only a cover frame, no components yet, and doesn't use `archielabs.ds` as a library. Until it does, its components can't reference the master's variables. Check this before the first component sync from `archie.ds`.
+- **Status (Oct 20, 2026):** `archie.ds` uses `archielabs.ds` as a library and has no variables of its own. Its first components are the Sidebar family (page "Sidebar": `sidebar`, `sidebar-menu-button`, `sidebar-menu-list`, `account-switcher`). Their old `tokens`/`foundation` library bindings were rebound to `archielabs.ds` `semantic`/`primitives` (0 left).
+- ⚠️ **Constraint:** `archielabs.ds` hides its `primitives` → `radius/*` from publishing, so `archie.ds` uses the `semantic` radii (`radius/menu/item` 6, `radius/default` 8). There's no published 4px radius: the icon buttons in the Sidebar sets keep a raw 4px until one is added.
 
 Skills compare every Figma URL's `fileKey` against both files in this table and flag any other file before proceeding.
 
@@ -89,6 +94,8 @@ Skills compare every Figma URL's `fileKey` against both files in this table and 
   - optional `<name>.mdx` docs page
 
   Categories: `buttons`, `forms`, `cards`, `data-display`, `feedback`, `overlays`, `navigation`, `typography`. Create a category folder when its first component arrives. Don't invent a category that isn't listed here without asking.
+
+  Exception: `typography` holds a single component, so its files sit directly in `src/components/typography/` (no `typography/typography/`), as in bethere-ucl. Import it from `@/components/typography`.
 - **Layouts:** full-page reference compositions under `src/layouts/<app>/<name>/`, previewed in Storybook and **not** exported from `src/index.ts`. Layouts used by more than one app go in `src/layouts/shared/`. Apps are listed in "Project". Screens in a multi-screen flow nest under `src/layouts/<app>/<flow>/`; list each flow here when it's created.
 - **Lib:** `src/lib/`
   - `utils.ts`: `cn()`
@@ -142,6 +149,7 @@ Create `src/components/<category>/<name>/` with these files (use `buttons/button
 - `const meta = { … } satisfies Meta<typeof Component>` with `title: "<Category>/<Component>"` (e.g. `Buttons/Button`).
 - One story per variant/state, plus an `AllVariants` story that renders every variant and size together.
 - `tags: ["autodocs"]`, unless the component has its own `<name>.mdx` page. The MDX page replaces autodocs.
+- Every story is a test (`npm test`): it fails if the story doesn't render. When a story shows a behavior (a click that's blocked, a state that changes, an error that's announced), add a `play` function that checks it with `expect`, `fn` and `userEvent` from `storybook/test`. Query by role and accessible name (`canvas.getByRole("button", { name: "Continue" })`), so the test also checks what a screen reader gets. Say what the test checks in the story's JSDoc ("Test: …").
 
 ### `<name>.mdx` (optional)
 
@@ -175,6 +183,28 @@ Mirror these names when a new component has the same concept. Keep this list cur
   - `variant`: `default` | `secondary` | `outline` | `ghost` | `link` | `destructive`
   - `size`: `default` | `sm` | `lg` | `icon`
   - `asChild` renders the button styles on its child (use for links)
+  - `pending` marks work in progress: `aria-busy`, stays focusable, ignores clicks (mirror this name for other components that start async work)
+  - `aria-disabled` is the focusable disabled state; `disabled` removes it from focus and pointer
+  - `type` defaults to `"button"`
+- **Input** (`forms/input`):
+  - `size`: `default` (36px) | `lg` (40px). Replaces the native `size` attribute
+  - States come from the element: `aria-invalid` (error), `readOnly`, `disabled`. No `variant` prop
+  - Bare field only. Label and helper text come from Label/Field; icons and addons from InputGroup (not built yet)
+- **Textarea** (`forms/textarea`): same `size` and states as Input; `size` sets a minimum height, and it grows with its content
+- **Label** (`forms/label`): Radix Label. Above a field: medium weight, keeps its color when disabled. After a checkbox/radio/switch (`peer`): regular weight, `muted-foreground` when disabled
+- **Checkbox** (`forms/checkbox`): Radix Checkbox. `checked`: `true` | `false` | `"indeterminate"` (Figma "Partial")
+- **RadioGroup** / **RadioGroupItem** (`forms/radio-group`): Radix Radio Group
+- **Switch** (`forms/switch`): Radix Switch. `size`: `default` (36 × 20) | `sm` (28 × 16)
+- **Tooltip** (`overlays/tooltip`): Radix Tooltip. `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` (wrap the app once)
+  - `TooltipContent` `size`: `default` (Figma Medium) | `sm` (Figma Small); `side`, `sideOffset` (default 4) from Radix
+- **Typography** (`typography/`, the category folder itself):
+  - `size`: `xs` | `sm` | `base` | `lg` | `xl` | `2xl` | `3xl` | `4xl` | `5xl` | `6xl` | `7xl` (the `--text-*` scale)
+  - `weight`: `regular` | `medium` | `semibold` | `bold` | `black`
+  - `as`: element to render, `p` by default. `h1`–`h4` default to `typographyHeadings` (DESIGN.md "Heading element → Typography pairing")
+  - Color isn't a prop: pass a text token in `className` (`text-muted-foreground`)
+- **Field** (`forms/field`): `Field`, `FieldLabel`, `FieldDescription`, `FieldError`, `FieldContent`, `FieldTitle`, `FieldGroup`, `FieldSet`, `FieldLegend` (shadcn's API, no `FieldSeparator` until Separator exists)
+  - `orientation`: `vertical` | `horizontal` | `responsive`
+  - Error: `data-invalid` on `Field`, `aria-invalid` on the control, message in `FieldError` (`errors` takes react-hook-form errors)
 
 ## Theme & Tokens
 
@@ -187,105 +217,19 @@ All tokens live in `src/styles/theme.css`:
 - **Use semantic utilities** (`bg-brand-subtle`, `text-icon-muted`). Primitives aren't Tailwind utilities: `bg-gray-100` is Tailwind's gray, not Archie's.
 - **Radius:** one `--radius` (0.5rem). `rounded-sm/md/lg` (4/6/8px) derive from it.
 - **Shadows:** `shadow-xs` … `shadow-2xl` follow the Figma effect styles. Their colors switch per mode.
-- **Spacing and font weights:** Tailwind's defaults already match Figma. Don't redefine them.
+- **Spacing:** Tailwind's default scale already matches Figma. Don't redefine it.
+- **Font weights:** lighter than Tailwind's: `light` 280, `normal` 350, `medium` 450, `semibold` 550, `bold` 650 (`extrabold`/`black` unchanged). `body` uses the normal weight, so all text is 350 unless a `font-*` is set (DESIGN.md "Font weight scale").
+- **Typography specs:** the full spec is written out in `typography.tsx`'s top comment, Storybook "Typography/Typography" and "Foundations/Typography". Changing a type token or heading default updates all three in the same change (DESIGN.md "Typography specs live in three places").
 
 To add a token, add it to `:root, .dark` (plus `.dark` when the dark value differs), then map it in `@theme inline`. Adding a token is a minor version; renaming or removing one is breaking.
 
 ## Motion System
 
-Use Motion for React from `motion/react`. All motion values come from `src/lib/motion/`. Use those exports; don't write raw durations, easings or distances in components.
+The motion rules live in [MOTION.md](MOTION.md): principles, personality, the named patterns (Lift, Press, Reveal…), component guidance, accessibility and the validation checklist. **Read it before adding or changing any animation.**
 
-Motion explains a change in state, preserves spatial continuity and keeps the interface responsive. Don't animate for decoration. If an animation doesn't improve clarity, feedback, orientation or perceived speed, leave it out. When unsure, choose the more subtle option.
-
-### Personality
-
-Calm, refined, natural, responsive. Never bouncy, cartoonish, mechanical or distracting.
-
-- **Prefer:** fade, soft scale, gentle elevation, short directional slide, crossfade, shared-element transition, smooth layout transition, subtle stagger.
-- **Use sparingly:** rotation under 2°, parallax, scroll-linked movement, expressive springs.
-- **Avoid unless asked:** bounce, shake, spin, elastic overshoot, full-screen wipes, dramatic zoom, long travel.
-
-### Tokens (`src/lib/motion/tokens.ts`)
-
-| Token                         | Value  | Use                                    |
-| ----------------------------- | ------ | -------------------------------------- |
-| `motionDuration.instant`      | 120 ms | Instant feedback                       |
-| `motionDuration.fast`         | 160 ms | Hover/press feedback, exits            |
-| `motionDuration.normal`       | 300 ms | Standard UI transitions                |
-| `motionDuration.slow`         | 500 ms | Panels, overlays, entrances            |
-| `motionDuration.deliberate`   | 600 ms | Page-level transitions, auto-scroll    |
-| `motionDistance.hover`        | 3 px   | Lift                                   |
-| `motionDistance.subtle`       | 8 px   | Reveal                                 |
-| `motionDistance.small`        | 12 px  | Component transitions                  |
-| `motionDistance.medium`       | 24 px  | Panels, Glide                          |
-| `motionDistance.large`        | 40 px  | Page transitions                       |
-| `motionScale.press`           | 0.98   | Press                                  |
-| `motionScale.mediaHover`      | 1.03   | Media inside a Lift card               |
-
-Don't go past `deliberate` (600 ms). A new value goes in `tokens.ts` with a comment saying what it's for, never inline in a component.
-
-### Transitions (`transitions.ts`)
-
-- `standardTransition`: common UI changes. Smooth acceleration, controlled deceleration, no overshoot.
-- `enterTransition`: elements arriving. Quick start, gentle finish.
-- `exitTransition`: elements leaving. Shorter than enter, decisive.
-- `subtleSpring` / `responsiveSpring` / `layoutSpring`: press, direct manipulation, layout and shared-element movement. High damping, no visible bounce.
-
-### Vocabulary
-
-Use these named patterns before inventing new motion. Gesture patterns live in `patterns.ts`, presence patterns in `variants.ts`.
-
-| Pattern  | Use for                                | Implementation                                  |
-| -------- | -------------------------------------- | ----------------------------------------------- |
-| Lift     | Hoverable cards and surfaces           | `liftPattern`, `liftWithMediaPattern`           |
-| Press    | Buttons, cards, direct interactions    | `pressPattern`                                  |
-| Reveal   | Content appearing in context           | `revealVariants`                                |
-| Expand   | A region opening/closing in place      | `expandVariants` + `useExpandClip()`            |
-| Connect  | Shared-element transitions             | `layoutId` + `layoutSpring`                     |
-| Flow     | Small groups entering together         | `staggerContainerVariants` + children `revealVariants` |
-| Glide    | Directional navigation                 | `slideVariants` (`custom={1 \| -1}`), `glidePattern` |
-| Dismiss  | Content removed or closed              | `dismissVariants`; table/list rows: `rowRemoveVariants` |
-| Confirm  | Lightweight success feedback           | `confirmPattern`                                |
-| Pending  | Work in progress on an element's behalf | `pendingIconVariants`, `pendingSurfaceVariants` |
-
-Plus `fadeVariants`, `overlayVariants` (scrims), `panelVariants` (drawers) and `iconSwapVariants` (one small element replacing another in place).
-
-### Component guidance
-
-- **Buttons:** press scale 0.98, fast release, never delay the action for the animation, never animate dimensions.
-- **Cards:** Lift on hover, media scale up to 1.03, no motion on non-interactive cards.
-- **Inputs:** motion clarifies focus, validation and conditional fields. Keep layout stable. No shake.
-- **Menus/dropdowns:** short fade plus a small movement from the trigger.
-- **Dialogs/overlays:** `AnimatePresence`, overlay fade, small surface movement, exit shorter than entrance. Usable immediately.
-- **Tabs:** active indicator via shared `layoutId`.
-- **Lists:** `AnimatePresence` with stable unique keys (never the index). Don't replay entrances on routine data updates.
-- **Loading:** subtle opacity pulse. No aggressive or high-contrast loaders.
-
-### Layout and presence
-
-- Use `layout` for size/position changes and `layoutId` for shared elements. Don't hand-compute positions Motion can manage.
-- Use `AnimatePresence` only for mount/unmount. Its direct children need stable unique keys.
-- Animate `opacity` and `transform` by preference. Avoid continuously animating `top`/`left`/`margin`/`padding`/`box-shadow`.
-- Never animate the same property with CSS and Motion at once.
-
-### Accessibility
-
-Always respect reduced motion: use `useMotionPreference()` and its `resolve()` helper. Under reduced motion:
-- Remove nonessential transforms, parallax and large movement.
-- Prefer opacity.
-- Keep state-change feedback: it becomes near-instant (`reducedMotionTransition`), it doesn't disappear.
-
-Motion is never the only signal of a state change. Keyboard behavior, focus order and visible focus must survive every animation.
-
-### Validation
-
-After motion work, check that:
-- The build passes.
-- There's no flash or layout shift.
-- Exits complete.
-- Rapid repeated interaction doesn't break state.
-- Reduced motion works.
-- Nothing blocks clicks, scrolling or navigation.
+- Import Motion APIs from `motion/react`.
+- Take every duration, easing, spring, distance and variant from `src/lib/motion/`. Never write raw motion values in a component.
+- Respect reduced motion with `useMotionPreference()` and its `resolve()` helper.
 
 ## Key Files
 
@@ -299,6 +243,7 @@ After motion work, check that:
 | `components.json`         | shadcn CLI configuration                                      |
 | `tsup.config.ts`          | Library build configuration                                   |
 | `.storybook/`             | Storybook setup, Tailwind plugin, `@/` alias, sidebar order   |
+| `vitest.config.ts`        | Story tests: `storybookTest` plugin, headless Chromium        |
 | `netlify.toml`            | Netlify hosting for the static Storybook site                 |
 
 ## Release & Publishing
@@ -336,7 +281,7 @@ npm install @jcaunedo/archie-ucl
 
 `@source` makes Tailwind scan UCL's bundled JS for class names. Without it, component styles silently go missing.
 
-UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Geist Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
+UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** as a variable font (`wght@100..900`, needed for UCL's 280–650 weights) and **Geist Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
 
 ```tsx
 import { Button } from "@jcaunedo/archie-ucl";

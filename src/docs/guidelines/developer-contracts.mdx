@@ -6,6 +6,27 @@ import { Meta } from "@storybook/addon-docs/blocks";
 
 Code-level rules that keep the other guidelines from silently breaking. Each one is a contract between two pieces of code, or a fix that's easy to undo by accident. Full history in `DESIGN.md`.
 
+## The pointer cursor is global
+
+Every clickable element shows `cursor: pointer` (and `not-allowed` when disabled) through one rule in `theme.css`'s `@layer base`. It matches real interactive elements and roles: `button`, `a[href]`, `label[for]`, `summary`, `select`, checkbox/radio/submit inputs, `[role="button"]`, and the Radix checkboxes, radios, switches, tabs, options and menu items.
+
+- Don't add `cursor-pointer` to a component. Tailwind 4 sets `cursor: default` on buttons, which is why the global rule exists.
+- A custom clickable element (a `div` acting as a button) needs `role="button"`, plus `aria-disabled="true"` when disabled, or it won't get the cursor.
+- A new interactive role that isn't covered: extend the selector list in `theme.css` (and its copy in `DESIGN.md`), never patch the one component.
+- A component that needs another cursor (`cursor-text`, `cursor-grab`) sets it with a utility, which wins over the base rule.
+- A button or link with `aria-disabled="true"` shows `not-allowed`, and a pending Button shows `progress`.
+
+## Button keeps four changes from shadcn
+
+A resync of Button from shadcn must keep these, or real bugs come back:
+
+- **`pending`**: `aria-busy` + `aria-disabled`, stays focusable, ignores clicks, pulses its content. Stops "Generate" from firing twice.
+- **`aria-disabled`**: blocks the click but keeps focus and hover, so a tooltip can explain why. Also blocks `asChild` links.
+- **`type="button"` by default**: a Button inside a form no longer submits it. Pass `type="submit"` on purpose.
+- **Content wrapped in a `motion.span`**, always (except `asChild`), so the DOM and width don't change when `pending` toggles.
+
+Hovers are written `hover:not-aria-disabled:…` so a blocked button doesn't react. Full rule in `DESIGN.md` → "Button: pending, focusable disabled and `type="button"`".
+
 ## Semantic tokens are declared on `:root, .dark`
 
 The light (Archie) semantic block in `theme.css` uses the selector `:root, .dark`, not just `:root`. The `.dark` block after it overrides only the values that differ.
@@ -28,6 +49,18 @@ CSS can't read TypeScript, so a few values are copied. Change each pair together
 | Value | In TypeScript | Copied in |
 | --- | --- | --- |
 | Breakpoints | `src/lib/breakpoints.ts` | `--breakpoint-*` in `theme.css` |
+
+## Typography specs live in three places
+
+The type tokens are in `theme.css` (`--text-*`, `--font-weight-*`, `--font-*`), but the full spec is also written out by hand. Update all three in the same change as any type token or heading default:
+
+| Where | What | Updates itself? |
+| --- | --- | --- |
+| `typography.tsx`, top comment | Fonts, sizes, weights, headings, color rule | No |
+| [Typography/Typography](?path=/docs/typography-typography--docs) (`typography.mdx`) | Same, with examples | No |
+| [Foundations/Typography](?path=/docs/foundations-typography--docs) | Token tables | Yes, generated from `theme.css` |
+
+UCL's weights are lighter than Tailwind's (`font-normal` 350, `medium` 450, `semibold` 550, `bold` 650). Never write `font-[500]` to get Tailwind's values back. Full rule in `DESIGN.md` → "Font weight scale".
 
 ## Table rows don't use `popLayout`
 

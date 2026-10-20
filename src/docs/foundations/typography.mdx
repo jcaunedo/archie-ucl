@@ -7,9 +7,7 @@ import { FontFamilies, FontWeights, TypeScale } from "./type-scale";
 
 # Typography
 
-The type tokens live in `src/styles/theme.css`, synced from the archielabs.ds Figma file. Use them through Tailwind's `text-*`, `font-*` and `font-sans`/`font-mono` utilities. Don't use arbitrary sizes such as `text-[15px]`.
-
-⚠️ **Gap:** UCL doesn't have a `Typography` component yet. Until it does, set text with these utilities directly.
+The type tokens live in `src/styles/theme.css`, synced from the archielabs.ds Figma file. Use them through the [Typography component](?path=/docs/typography-typography--docs), or through Tailwind's `text-*`, `font-*` and `font-sans`/`font-mono` utilities. Don't use arbitrary sizes or weights such as `text-[15px]` or `font-[500]`.
 
 ## Fonts
 
@@ -17,18 +15,26 @@ The type tokens live in `src/styles/theme.css`, synced from the archielabs.ds Fi
 
 <FontFamilies css={themeCss} />
 
-ℹ️ `theme.css` declares the font tokens but doesn't load the webfonts. Storybook loads them in `.storybook/preview-head.html`. Consuming apps load Geist (300–900) and Geist Mono (400–700) themselves, e.g. with `next/font/google` (see CLAUDE.md → "Consumer Integration"). Without them, text falls back to the system font.
+ℹ️ `theme.css` declares the font tokens but doesn't load the webfonts. Storybook loads them in `.storybook/preview-head.html`. Consuming apps load Geist as a variable font (`wght@100..900`) and Geist Mono (400–700) themselves, e.g. with `next/font/google` (see CLAUDE.md → "Consumer Integration"). Without them, text falls back to the system font. With a fixed list of weights instead of the variable font, the 280–650 weights below round to the nearest loaded one.
 
 ## Type scale
 
-Generated from the `--text-*` tokens. Each size sets its font size and paired line height, from Figma's `font-size/*` and `line-height/*` primitives.
+Generated from the `--text-*` tokens. Each size sets its font size and paired line height, from Figma's `font-size/*` and `line-height/*` primitives. Sizes don't set a weight: text inherits `body`'s normal weight (350) unless a `font-*` utility is set.
 
 <TypeScale css={themeCss} />
 
-⚠️ **Constraint:** most archielabs.ds text styles still render Inter and older line heights (2xl at 24/36). UCL follows the live primitives (2xl at 24/32) and Geist. DESIGN.md → "Deliberately not mirrored" has the details.
+✅ **Resolved:** every archielabs.ds text style is Geist and binds its size and line height to these primitives, so Figma and UCL match (2xl at 24/32).
 
 ## Weights
 
-Tailwind's default weights already match Figma's `font-weight/*` primitives, so `theme.css` doesn't redefine them.
+UCL's weights are lighter than Tailwind's from `light` to `bold`: 280, 350, 450, 550 and 650 instead of 300, 400, 500, 600 and 700. `extrabold` and `black` keep Tailwind's values. Generated from the `--font-weight-*` tokens in `theme.css`. Typography's `weight` prop uses the same scale (`regular` is `font-normal`).
 
-<FontWeights />
+<FontWeights css={themeCss} />
+
+**Why:** Geist's standard weights read heavy in the interface, so each step from normal to bold is 50 lighter and light is 280 (product decision, Oct 20, 2026). Geist is a variable font, so these are real weights, not fallbacks.
+
+**For developers:** use the named utilities or Typography's `weight`. Never write `font-[500]` or `font-[700]` to get Tailwind's values back. Changing a step changes every component that uses it (Button, Label, the Typography headings), and the apps too, because `theme.css` ships to them.
+
+✅ **Resolved:** Figma's `semantic` → `font-weight/*` variables match these values in the Archie modes. They're per mode, so each product can set its own weights.
+
+All 55 Figma text styles bind their weight to those variables, so Figma renders the same weights as UCL.

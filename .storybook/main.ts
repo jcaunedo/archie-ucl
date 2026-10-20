@@ -11,6 +11,8 @@ const config: StorybookConfig = {
 			// GitHub-flavored Markdown (tables, task lists) in the MDX docs pages, which plain MDX doesn't parse.
 			options: { mdxPluginOptions: { mdxCompileOptions: { remarkPlugins: [remarkGfm] } } },
 		},
+		// Runs every story as a Vitest test in a real browser (Playwright, Chromium). See vitest.config.ts.
+		"@storybook/addon-vitest",
 	],
 	framework: {
 		name: "@storybook/react-vite",

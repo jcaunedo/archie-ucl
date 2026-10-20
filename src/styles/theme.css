@@ -119,16 +119,19 @@
 
 /* ---------- Breakpoints ----------
    Each breakpoint's layout covers widths up to and including its frame width
-   (sm 640, md 768, lg 1024, xl 1280, 2xl 1536, 3xl 1920): the lg frame at
+   (sm 640, md 768, lg 1024, xl 1280, 2xl 1536, 2.5xl 1728, 3xl 1920): the lg frame at
    exactly 1024px gets the "lg and below" layout. So each Tailwind breakpoint
    starts 1px past its frame width: `lg:` = above 1024, `max-lg:` = 1024 and
-   below. Keep in sync with `src/lib/breakpoints.ts` (for JS media queries). */
+   below. Keep in sync with `src/lib/breakpoints.ts` (for JS media queries).
+   `2.5xl` (custom, halfway between 2xl and 3xl) needs its dot escaped in the
+   key: `--breakpoint-2_5xl` would only generate `max-2.5xl:`, not `2.5xl:`. */
 @theme {
 	--breakpoint-sm: 641px;
 	--breakpoint-md: 769px;
 	--breakpoint-lg: 1025px;
 	--breakpoint-xl: 1281px;
 	--breakpoint-2xl: 1537px;
+	--breakpoint-2\.5xl: 1729px;
 	--breakpoint-3xl: 1921px;
 }
 
@@ -147,6 +150,14 @@
 	--text-sm--line-height: 1.25rem;
 	--text-base: 1rem;
 	--text-base--line-height: 1.5rem;
+	/* Weight scale, lighter than Tailwind's from light to bold (DESIGN.md "Font weight scale"). `body` uses the normal
+	   weight (see the base layer at the end of this file), so all text is 350 unless a `font-*` utility is set.
+	   Geist is variable (100–900). extrabold (800) and black (900) keep Tailwind's values. */
+	--font-weight-light: 280;
+	--font-weight-normal: 350;
+	--font-weight-medium: 450;
+	--font-weight-semibold: 550;
+	--font-weight-bold: 650;
 	--text-lg: 1.125rem;
 	--text-lg--line-height: 1.75rem;
 	--text-xl: 1.25rem;
@@ -297,7 +308,7 @@
 	--modal: var(--white);
 	--input-disabled: var(--gray-100);
 	--input-ring: var(--gray-400);
-	--ring-outside: var(--gray-50);
+	--ring-outside: var(--gray-200);
 
 	/* Icons */
 	--icon: var(--gray-700);
@@ -453,4 +464,54 @@
 	--shadow-color-sm: oklch(0 0 0 / 30%);
 	--shadow-color-md: oklch(0 0 0 / 60%);
 	--shadow-color-lg: oklch(0 0 0 / 80%);
+}
+
+/* ---------- Global interaction affordance ----------
+   Tailwind v4's preflight sets `cursor: default` on <button> (v3 used
+   `pointer`). This restores the pointer cursor on every clickable element, once,
+   so new components get it for free; disabled controls get `not-allowed`.
+   Covers native controls plus the ARIA roles Radix/shadcn render (tabs, menu
+   items, options, checkboxes, radios, switches). Shipped to consumers, so the
+   apps' own buttons and links follow it too. Utilities in a component still
+   win (`@layer base`), e.g. `cursor-text` on a text-entry combobox.
+   See DESIGN.md "Every clickable element shows the pointer cursor". */
+@layer base {
+	button:not(:disabled):not([aria-disabled="true"]),
+	[role="button"]:not([aria-disabled="true"]),
+	a[href]:not([aria-disabled="true"]),
+	label[for],
+	summary,
+	select:not(:disabled),
+	input:is([type="checkbox"], [type="radio"], [type="submit"], [type="button"], [type="reset"], [type="file"]):not(:disabled),
+	:is(
+			[role="checkbox"],
+			[role="radio"],
+			[role="switch"],
+			[role="tab"],
+			[role="option"],
+			[role="menuitem"],
+			[role="menuitemcheckbox"],
+			[role="menuitemradio"]
+		):not([aria-disabled="true"]):not([data-disabled]) {
+		cursor: pointer;
+	}
+
+	button:disabled,
+	button[aria-disabled="true"],
+	[role="button"][aria-disabled="true"],
+	a[href][aria-disabled="true"],
+	select:disabled,
+	input:is([type="checkbox"], [type="radio"], [type="submit"], [type="button"], [type="reset"], [type="file"]):disabled {
+		cursor: not-allowed;
+	}
+}
+
+/* ---------- Base text weight ----------
+   All text inherits the normal weight (350, `--font-weight-normal`) instead of the browser's 400, so text with no
+   `font-*` utility matches `font-normal` at every size. Shipped to consumers, so the apps' unstyled text is 350 too.
+   See DESIGN.md "Font weight scale". */
+@layer base {
+	body {
+		font-weight: var(--font-weight-normal);
+	}
 }

@@ -48,13 +48,41 @@ Place icons from `lucide-react` as children. The button sizes them to 16px autom
 
 <Canvas of={ButtonStories.WithIcon} />
 
+## Pending
+
+Set `pending` while the work the button started is running. The button stays focusable, ignores more clicks, sets `aria-busy` and gently pulses its content. The label can change ("Generate app" → "Generating app"), but keep it about the same length so the button doesn't jump.
+
+<Canvas of={ButtonStories.Pending} />
+
+When the work can be cancelled, show a separate Stop button next to the pending one. Don't turn the pending button into Stop: it's a different action with its own handler.
+
+<Canvas of={ButtonStories.PendingWithStop} />
+
 ## Disabled
+
+`disabled` removes the button from the tab order and ignores the pointer. Use it only when the reason is obvious.
 
 <Canvas of={ButtonStories.Disabled} />
 
+When people need to know why a button is unavailable, use `aria-disabled="true"` instead. The button stays focusable and keeps its tooltip, and clicks are ignored. Point `aria-describedby` at the text that explains why.
+
+<Canvas of={ButtonStories.FocusableDisabled} />
+
+## In a form
+
+Button defaults to `type="button"`, so it never submits a form by accident. Set `type="submit"` on the button that should.
+
+<Canvas of={ButtonStories.InForm} />
+
+## Long labels
+
+A button never grows past its container. To cut a long label with an ellipsis, wrap the text in `<span className='truncate'>`. Prefer a shorter label first.
+
+<Canvas of={ButtonStories.LongLabel} />
+
 ## As a link
 
-Set `asChild` to render the button styles on the child element instead of a `<button>`. Use this for navigation, so the element stays a real link.
+Set `asChild` to render the button styles on the child element instead of a `<button>`. Use this for navigation, so the element stays a real link. `aria-disabled` also works here and blocks the navigation; `pending` only sets `aria-busy`.
 
 <Canvas of={ButtonStories.AsLink} />
 
@@ -63,4 +91,6 @@ Set `asChild` to render the button styles on the child element instead of a `<bu
 - Renders a native `<button>`, so keyboard and screen reader support work out of the box.
 - The focus ring uses the `--ring` token and appears only on keyboard focus.
 - Icon-only buttons need an `aria-label`.
+- `pending` sets `aria-busy`. If people need to hear when the work finishes, announce the result in a `role="status"` region.
+- Prefer `aria-disabled` over `disabled` when the reason matters: a `disabled` button can't be focused, so its reason is never read out.
 - Use `asChild` with an `<a>` for navigation. Do not use a button with an `onClick` that changes the URL.

@@ -60,7 +60,7 @@ In the app's global CSS:
 
 ### 4. Load the fonts
 
-UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (weights 300–900) and **Geist Mono** (400–700), for example with `next/font/google` or a Google Fonts `<link>`. Without them, text falls back to the system font.
+UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** (variable, weights 100–900) and **Geist Mono** (400–700), for example with `next/font/google` or a Google Fonts `<link>`. Without them, text falls back to the system font.
 
 ### 5. Use components
 
@@ -113,7 +113,7 @@ src/
         index.ts            # Re-exports the component, variants and types
 ```
 
-Add each component in its own folder under its category, then re-export it from `src/index.ts`. `CLAUDE.md` has the full conventions, and `DESIGN.md` has the design rules a change must keep.
+Add each component in its own folder under its category, then re-export it from `src/index.ts`. `CLAUDE.md` has the full conventions, `DESIGN.md` has the design rules a change must keep, and `MOTION.md` has the motion rules.
 
 ### Day-to-Day Flow
 
