@@ -15,7 +15,7 @@ web
 
 ## Product Purpose
 
-This repo, `archie-ucl`, is the shared React component library and the product design source for **Archie** and **Archie Core**. It holds the design rules (DESIGN.md), the product specs (`product-specs/`), prototypes, and the production components and layouts that Archie's frontend apps install from `@jcaunedo/archie-ucl`.
+This repo, `archie-ucl`, is the shared React component library and the product design source for **Archie** and **Archie Core**. It holds the design rules (DESIGN.md), the product specs (`prds/`), prototypes, and the production components and layouts that Archie's frontend apps install from `@jcaunedo/archie-ucl`.
 
 - **Archie:** the flagship AI app builder. It takes a builder from a prompt to a production-ready full-stack app.
 - **Archie Core:** the backend-only tier. It gives teams the generated backend (APIs, data models, services) without the frontend layer.
@@ -30,8 +30,8 @@ Competitors (Lovable, Bolt, Base44, v0, Replit, Cursor) go from prompt to protot
 
 ## Operating Context
 
-- Builders work in an AI chat that defines the blueprint, then generates, changes and deploys the app. `product-specs/conversational-progress-feedback.md` covers how that chat shows Archie's activity.
-- Entry is one identifier-first sign-in flow with social sign-in (Google, Microsoft, Github) and email (`product-specs/sign-in-sign-up.md`).
+- Builders work in an AI chat that defines the blueprint, then generates, changes and deploys the app. `prds/conversational-progress-feedback.md` covers how that chat shows Archie's activity.
+- Entry is one identifier-first sign-in flow with social sign-in (Google, Microsoft, Github) and email (`prds/sign-in-sign-up.md`).
 - Design and engineering review components and layouts together in Storybook before any app uses them.
 
 ## Capabilities and Constraints
@@ -49,7 +49,7 @@ Competitors (Lovable, Bolt, Base44, v0, Replit, Cursor) go from prompt to protot
 
 ## Evidence on Hand
 
-- Product specs: `product-specs/sign-in-sign-up.md`, `product-specs/conversational-progress-feedback.md`.
+- Product specs: `prds/sign-in-sign-up.md`, `prds/conversational-progress-feedback.md`.
 - Design rules: `DESIGN.md`. Motion system: `src/lib/motion/` and CLAUDE.md → "Motion System".
 - No customer testimonials, usage metrics, benchmarks or pricing are in this repo. Don't make any up.
 

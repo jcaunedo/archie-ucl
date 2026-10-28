@@ -4,7 +4,7 @@ Shared React component library for Archie frontend applications. Built with Reac
 
 This repo is where Archie's product design happens. It holds:
 
-- design decisions and the rationale behind them (DESIGN.md, `product-specs/`)
+- design decisions and the rationale behind them (DESIGN.md, `prds/`)
 - prototypes
 - production-ready frontend components and layouts
 
@@ -287,9 +287,9 @@ UCL declares the font tokens but doesn't load the webfonts. Each app loads **Gei
 import { Button } from "@jcaunedo/archie-ucl";
 ```
 
-## product-specs writing conventions
+## prds writing conventions
 
-Conventions for every doc under `product-specs/`.
+Conventions for every doc under `prds/`.
 
 ### Status labels
 

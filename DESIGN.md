@@ -151,6 +151,30 @@ The rule matches real interactive elements and roles:
 
 ---
 
+## Text rendering: antialiased, kerned, no faux styles (`src/styles/theme.css`)
+
+**Rule:** one global `@layer base` rule on `html` at the end of `theme.css` sets how every app renders text. Added Oct 25, 2026, same as intercept-ucl.
+
+| Property | Value | Effect |
+| --- | --- | --- |
+| `-webkit-font-smoothing` / `-moz-osx-font-smoothing` | `antialiased` / `grayscale` | macOS only (Chrome, Safari, Firefox): thinner, crisper text than the platform's heavier default smoothing. Same as Tailwind's `antialiased`. No effect on Windows or Linux |
+| `font-kerning` | `normal` | The font's kerning at every size, not only where the browser decides |
+| `font-synthesis` | `none` | The browser never fakes bold or italic. A weight an app didn't load falls back to a loaded weight instead of a blurry smeared one |
+| `-webkit-text-size-adjust` / `text-size-adjust` | `100%` | iOS doesn't enlarge text after rotation |
+
+**Why:** browser defaults render text heavier on macOS than Figma draws it, and a missing webfont weight shows as faux bold. UCL declares the font tokens but doesn't load the webfonts (CLAUDE.md "Consumer Integration"), so `font-synthesis: none` protects apps that load fewer weights than the components use.
+
+**How to apply:**
+
+- Don't add `antialiased` or these properties to a component. The global rule covers it.
+- `text-rendering: optimizeLegibility` is deliberately not set globally: modern browsers already kern and apply ligatures, and on long pages it can slow rendering. Use it per element only if a specific heading needs it.
+- Apps load Geist as a variable font (`wght@100..900`, as CLAUDE.md "Consumer Integration" and `.storybook/preview-head.html` do), since UCL uses weights from 280 to 650 (DESIGN.md "Font weight scale"). A static weight set would fall back to the nearest loaded weight.
+- Digits that line up in columns use `tabular-nums` per element. That's a typographic choice, not part of this rule.
+
+⚠️ **Constraint:** `theme.css` ships to consumers, so every app's text renders this way, including text outside UCL components. `antialiased` makes text look slightly lighter on macOS: compare it with Figma before changing font weights to make up for it.
+
+---
+
 ## Button: pending, focusable disabled and `type="button"` (`src/components/buttons/button/button.tsx`)
 
 **Rule:** Button differs from shadcn's in four ways. A resync from shadcn must keep all of them:
