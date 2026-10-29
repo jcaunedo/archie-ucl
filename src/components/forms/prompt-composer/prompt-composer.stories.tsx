@@ -158,6 +158,7 @@ const commands = [
 	{ name: "theme", description: "Change the color scheme" },
 	{ name: "module", description: "Add a module to the blueprint" },
 	{ name: "contrast", description: "Check color contrast" },
+	{ name: "ask-permission", group: "prototype" },
 ];
 
 /**
@@ -167,11 +168,15 @@ const commands = [
 export const Commands: Story = {
 	args: {
 		commands,
+		commandGroups: { prototype: "Preview interactions" },
 	},
 	play: async ({ canvas, userEvent }) => {
 		const field = canvas.getByRole("combobox", { name: "Message Archie" });
 		await userEvent.type(field, "/");
 		await expect(canvas.getAllByRole("option")).toHaveLength(commands.length);
+		// A divider between the app's commands and the prototype group; it isn't an option.
+		await expect(canvas.getByRole("listbox").querySelectorAll("[role=separator]")).toHaveLength(1);
+		await expect(canvas.getByRole("listbox")).toHaveTextContent("Preview interactions");
 
 		await userEvent.type(field, "th");
 		await expect(canvas.getAllByRole("option")).toHaveLength(1);

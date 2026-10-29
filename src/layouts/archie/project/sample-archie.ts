@@ -425,6 +425,21 @@ Changes are quick now and take longer once there's code. When it looks right, st
 	];
 }
 
+/** Archie asks permission before removing Cart & Checkout (approval checkpoint; also the /ask-permission scenario). */
+const askPermission: Step[] = [
+	wait(0, { type: "status", label: "Thinking…" }),
+	wait(900, { type: "text", text: "" }),
+	...say("Removing them changes what the store can do, so I'll check with you first."),
+	wait(200, {
+		type: "approval",
+		description:
+			"Remove Cart & Checkout. The store stops taking orders; shoppers can only browse. You can restore the current version later.",
+		allow: { label: "Allow", message: "Remove cart and checkout" },
+		deny: { label: "Deny", message: "Keep them" },
+	}),
+	wait(0, { type: "done" }),
+];
+
 /** The scripted turns. The first match wins, so the order matters. */
 const sampleTurns: {
 	match: RegExp;
@@ -554,7 +569,7 @@ Want me to darken them a little for more room?`),
 	},
 	{
 		needs: "blueprint",
-		match: /^(ask about my app|explain my app)$/i,
+		match: /^ask about my app$/i,
 		steps: () =>
 			answer(
 				`Ask me anything about ${blueprint.name}: its user types, its modules, or how a part works. For example: "How does the fit check work?"`,
@@ -631,25 +646,9 @@ Want me to darken them a little for more room?`),
 				credits: 3,
 			}),
 	},
+	{ needs: "built", match: /^remove the cart and checkout entirely$/i, steps: () => askPermission },
 	{
-		needs: "built",
-		match: /^remove the cart and checkout entirely$/i,
-		steps: () => [
-			wait(0, { type: "status", label: "Thinking…" }),
-			wait(900, { type: "text", text: "" }),
-			...say("Removing them changes what the store can do, so I'll check with you first."),
-			wait(200, {
-				type: "approval",
-				description:
-					"Remove Cart & Checkout. The store stops taking orders; shoppers can only browse. You can restore the current version later.",
-				allow: { label: "Allow", message: "Remove cart and checkout" },
-				deny: { label: "Deny", message: "Keep them" },
-			}),
-			wait(0, { type: "done" }),
-		],
-	},
-	{
-		needs: "built",
+		// No `needs`: the /ask-permission scenario can run before anything is built, and Allow should still work.
 		match: /^remove cart and checkout$/i,
 		steps: () =>
 			change({
@@ -782,15 +781,15 @@ function restore(version: number, current: number): Step[] {
 	];
 }
 
-/** Slash commands, as the request they stand for. */
-const commandRequests: Record<string, (rest: string) => string> = {
-	prototype: () => "Generate Prototype",
-	fullstack: () => "Generate Full Stack Application",
-	theme: (rest) => `Change the color theme to ${rest || "green"}`,
-	module: (rest) => (rest ? `Add ${rest}` : "Add a feature"),
-	contrast: () => "Check color contrast",
-	explain: (rest) => `Explain ${rest || "my app"}`,
+/** Prototype shortcuts (the commands menu's "prototype" group): each plays one scenario, whatever the stage. */
+const scenarios: Record<string, () => Step[]> = {
+	"ask-permission": () => askPermission,
 };
+
+/** Slash commands, as the request they stand for. */
+// Empty until Archie's command set is defined: the menu's /command-1 and /command-2 are placeholders, so sending one
+// gets the usual "not sure what you mean".
+const commandRequests: Record<string, (rest: string) => string> = {};
 
 function expandCommand(text: string) {
 	const command = /^\/(\S+)\s*(.*)$/s.exec(text);
@@ -830,6 +829,10 @@ function stepsFor(request: ArchieRequest, memory: Memory = {}): Step[] {
 		return restore(request.version, request.current);
 	}
 	const text = expandCommand(request.text);
+	const scenario = scenarios[request.text.trim().slice(1).toLowerCase()];
+	if (request.text.startsWith("/") && scenario) {
+		return scenario();
+	}
 
 	// Waiting on one answer: a readable reply fills it in, and the blueprint gets drafted with all of them.
 	const pending = memory.pendingAnswers;

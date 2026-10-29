@@ -197,9 +197,10 @@ const pendingSpinnerVariants: Variants = {
 };
 
 /**
- * Slide up: content taking over a spot rises gently into place while it fades in (the next clarifying question). Subtle:
- * 12px on the standard curve, slow enough that the rise reads; the fade finishes sooner. Under reduced motion, appear
- * without it.
+ * Slide up: content taking over a spot rises gently into place while it fades in (the next clarifying question, the
+ * permission prompt). Subtle: 12px on the standard curve, slow enough that the rise reads; the fade finishes sooner.
+ * Leaving, it slides back down the same 12px as it fades, on the quicker exit timing (a decided permission prompt).
+ * Under reduced motion, use `fadeVariants`.
  */
 const slideUpVariants: Variants = {
   initial: { opacity: 0, y: motionDistance.small },
@@ -208,6 +209,7 @@ const slideUpVariants: Variants = {
     y: 0,
     transition: { ...standardTransition, duration: motionDuration.slow, opacity: { duration: motionDuration.normal } },
   },
+  exit: { opacity: 0, y: motionDistance.small, transition: exitTransition },
 };
 
 /**

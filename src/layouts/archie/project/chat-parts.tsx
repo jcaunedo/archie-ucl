@@ -10,6 +10,7 @@ import {
 	Copy,
 	CornerDownRight,
 	Ellipsis,
+	Hand,
 	Minus,
 	Pencil,
 	RotateCcw,
@@ -174,48 +175,69 @@ function inline(text: string) {
 	});
 }
 
+const isHeading = (lines: string[]) => lines.length === 1 && /^\*\*[^*]+\*\*$/.test(lines[0]);
+
+/** One paragraph of Archie's text: a `- ` list, a `1. ` list, a bold heading, or plain text. */
+function TextBlock({ lines, paragraph }: { lines: string[]; paragraph: string }) {
+	if (lines.every((line) => line.startsWith("- "))) {
+		return (
+			<ul className='flex list-disc flex-col gap-1 pl-5'>
+				{lines.map((line, item) => (
+					<li key={item}>{inline(line.slice(2))}</li>
+				))}
+			</ul>
+		);
+	}
+	if (lines.every((line) => /^\d+\. /.test(line))) {
+		return (
+			<ol className='flex list-decimal flex-col gap-1 pl-5'>
+				{lines.map((line, item) => (
+					<li key={item}>{inline(line.replace(/^\d+\. /, ""))}</li>
+				))}
+			</ol>
+		);
+	}
+	if (isHeading(lines)) {
+		return <p className='font-semibold'>{lines[0].slice(2, -2)}</p>;
+	}
+	return <p className='whitespace-pre-wrap'>{inline(paragraph)}</p>;
+}
+
 /**
  * Archie's reply, from the light Markdown its replies use: paragraphs, a line in bold as a heading, `- ` lists and
- * `1. ` lists. Renders partial text as it streams.
+ * `1. ` lists. Renders partial text as it streams. Paragraphs are 16px apart; a heading sits 8px above what it
+ * introduces, so it reads as that content's title (prds/chat-behavior-system.md "Archie text").
  */
 function ArchieText({ text }: { text: string }) {
-	const paragraphs = text.split(/\n{2,}/).filter((paragraph) => paragraph.trim() !== "");
+	const paragraphs = text
+		.split(/\n{2,}/)
+		.filter((paragraph) => paragraph.trim() !== "")
+		.map((paragraph) => ({ paragraph, lines: paragraph.split("\n").filter((line) => line !== "") }));
+
+	// Each heading is grouped with the paragraph or list after it.
+	const groups: (typeof paragraphs)[] = [];
+	for (const block of paragraphs) {
+		const previous = groups.at(-1);
+		if (previous && previous.length === 1 && isHeading(previous[0].lines)) {
+			previous.push(block);
+		} else {
+			groups.push([block]);
+		}
+	}
 
 	return (
-		<div className='flex flex-col gap-3 text-sm text-foreground'>
-			{paragraphs.map((paragraph, index) => {
-				const lines = paragraph.split("\n").filter((line) => line !== "");
-				if (lines.every((line) => line.startsWith("- "))) {
-					return (
-						<ul key={index} className='flex list-disc flex-col gap-1 pl-5'>
-							{lines.map((line, item) => (
-								<li key={item}>{inline(line.slice(2))}</li>
-							))}
-						</ul>
-					);
-				}
-				if (lines.every((line) => /^\d+\. /.test(line))) {
-					return (
-						<ol key={index} className='flex list-decimal flex-col gap-1 pl-5'>
-							{lines.map((line, item) => (
-								<li key={item}>{inline(line.replace(/^\d+\. /, ""))}</li>
-							))}
-						</ol>
-					);
-				}
-				if (lines.length === 1 && /^\*\*[^*]+\*\*$/.test(lines[0])) {
-					return (
-						<p key={index} className='font-semibold'>
-							{lines[0].slice(2, -2)}
-						</p>
-					);
-				}
-				return (
-					<p key={index} className='whitespace-pre-wrap'>
-						{inline(paragraph)}
-					</p>
-				);
-			})}
+		<div className='flex flex-col gap-4 text-sm text-foreground'>
+			{groups.map((group, index) =>
+				group.length > 1 ? (
+					<div key={index} className='flex flex-col gap-2'>
+						{group.map((block, item) => (
+							<TextBlock key={item} {...block} />
+						))}
+					</div>
+				) : (
+					<TextBlock key={index} {...group[0]} />
+				),
+			)}
 		</div>
 	);
 }
@@ -411,7 +433,7 @@ function QuestionsList({
 	}, [current, block.editing]);
 
 	return (
-		<ol aria-label='Questions' className='flex flex-col gap-3'>
+		<ol aria-label='Questions' className='flex flex-col gap-4'>
 			{block.questions.map((question, index) => {
 				const answer = block.answers[index];
 				if (index === current) {
@@ -650,17 +672,15 @@ function NextSteps({
 }
 
 /**
- * Archie asking permission before a consequential action (UCL PromptAlert, archie.ds prompt-alert): Deny (`outline`)
- * and Allow (`neutral`). Once decided, or once the conversation has moved on, the choice is shown instead of the buttons.
+ * Archie asking permission before a consequential action (UCL PromptAlert, archie.ds prompt-alert): the description,
+ * then Deny (`outline`) and Allow (`neutral`). Shown on top of the composer, not in the thread, while it waits (DESIGN.md
+ * "PromptAlert").
  */
 function ApprovalPrompt({
 	block,
-	active,
 	onDecide,
 }: {
 	block: Block<"approval">;
-	/** False once the conversation has moved on without a decision: the buttons lock. */
-	active: boolean;
 	onDecide: (choice: "allow" | "deny", message: string) => void;
 }) {
 	return (
@@ -668,33 +688,34 @@ function ApprovalPrompt({
 			<PromptAlertTitle>{block.title}</PromptAlertTitle>
 			<PromptAlertDescription>{block.description}</PromptAlertDescription>
 			<PromptAlertActions>
-				{block.decided ? (
-					<p className='flex items-center gap-1 text-xs text-muted-foreground'>
-						<Check aria-hidden className='size-3.5' />
-						{block.decided === "allow" ? "Allowed" : "Denied"}
-					</p>
-				) : (
-					<>
-						<Button
-							variant='outline'
-							size='sm'
-							aria-disabled={!active || undefined}
-							onClick={() => active && onDecide("deny", block.deny.message)}
-						>
-							{block.deny.label}
-						</Button>
-						<Button
-							variant='neutral'
-							size='sm'
-							aria-disabled={!active || undefined}
-							onClick={() => active && onDecide("allow", block.allow.message)}
-						>
-							{block.allow.label}
-						</Button>
-					</>
-				)}
+				<Button variant='outline' size='sm' onClick={() => onDecide("deny", block.deny.message)}>
+					{block.deny.label}
+				</Button>
+				<Button variant='neutral' size='sm' onClick={() => onDecide("allow", block.allow.message)}>
+					{block.allow.label}
+				</Button>
 			</PromptAlertActions>
 		</PromptAlert>
+	);
+}
+
+/**
+ * What stays in the thread from a permission request: what was asked and the decision ("Allowed", "Denied", or
+ * "No answer" once the conversation moved on). Nothing while it's waiting: the prompt is on top of the composer then.
+ */
+function ApprovalRecord({ block, waiting }: { block: Block<"approval">; waiting: boolean }) {
+	if (waiting) {
+		return null;
+	}
+	const ask = block.description.split(". ")[0].replace(/\.$/, "");
+	const outcome = block.decided === "allow" ? "Allowed" : block.decided === "deny" ? "Denied" : "No answer";
+	return (
+		<p className='flex items-start gap-1.5 text-sm text-muted-foreground'>
+			<Hand aria-hidden className='mt-0.5 size-3.5 shrink-0 -scale-x-100' />
+			<span>
+				Asked permission: {ask} · <span className='font-medium text-foreground'>{outcome}</span>
+			</span>
+		</p>
 	);
 }
 
@@ -939,6 +960,7 @@ function PromptStarters({ items, onPick }: { items: string[]; onPick: (item: str
 export {
 	ActivityFeed,
 	ApprovalPrompt,
+	ApprovalRecord,
 	ElapsedTime,
 	AnswersMessage,
 	ArchieText,

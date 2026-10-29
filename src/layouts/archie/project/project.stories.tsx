@@ -300,8 +300,8 @@ export const UnclearMessage: Story = {
 
 /**
  * Archie asks permission before a consequential change (PromptAlert, progress PRD FR-09).
- * Test: an ambiguous request gets options; choosing the destructive one brings an approval prompt; Deny keeps
- * everything and the prompt shows the decision.
+ * Test: an ambiguous request gets options; choosing the destructive one brings an approval prompt above the composer;
+ * Deny keeps everything, the prompt leaves, and the thread records the decision.
  */
 export const AskPermission: Story = {
 	args: {
@@ -316,10 +316,35 @@ export const AskPermission: Story = {
 		const prompt = within(canvas.getByRole("alert"));
 		await expect(prompt.getByText("Ask permission")).toBeInTheDocument();
 		await expect(prompt.getByRole("button", { name: "Allow" })).toBeInTheDocument();
+		// It waits above the composer, not in the thread.
+		await expect(canvas.getByRole("log")).not.toContainElement(canvas.getByRole("alert"));
 		await userEvent.click(prompt.getByRole("button", { name: "Deny" }));
 		await archieFinished(canvas);
 		await expect(canvas.getByRole("log")).toHaveTextContent("Okay, nothing changed.");
-		await expect(prompt.getByText("Denied")).toBeInTheDocument();
+		await waitFor(() => expect(canvas.queryByRole("alert")).not.toBeInTheDocument());
+		await expect(canvas.getByRole("log")).toHaveTextContent("Asked permission: Remove Cart & Checkout · Denied");
+	},
+};
+
+/**
+ * Prototype shortcuts in the "/" menu, after a divider: /ask-permission plays the approval scenario at any stage.
+ * Test: with a clarifying question open, the shortcut isn't taken as an answer; Archie asks permission.
+ */
+export const PrototypeShortcut: Story = {
+	args: {
+		data: sampleProjectWithReply,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const composer = canvas.getByRole("combobox", { name: "Message Archie" });
+		await userEvent.type(composer, "/ask");
+		await expect(canvas.getByRole("option", { name: /ask-permission/ })).toHaveAttribute("aria-selected", "true");
+		// A prototype shortcut sends as soon as it's picked.
+		await userEvent.keyboard("{Enter}");
+		await archieFinished(canvas);
+		// The bubble says what the shortcut does, not the command.
+		await expect(canvas.getByRole("log")).toHaveTextContent("Show ask permission interaction");
+		await expect(within(canvas.getByRole("alert")).getByText("Ask permission")).toBeInTheDocument();
 	},
 };
 
@@ -366,8 +391,8 @@ export const QueueAndStop: Story = {
 };
 
 /**
- * Slash commands, as in intercept-ucl's composer. Test: "/the" filters the menu to /theme, Enter picks it, and sending
- * "/theme blue" changes the theme in a new version.
+ * Slash commands, as in intercept-ucl's composer. The command set isn't defined yet: two placeholders stand in.
+ * Test: "/comm" filters the menu to the two commands, Enter picks the first into the message, and Escape closes it.
  */
 export const SlashCommand: Story = {
 	args: {
@@ -376,13 +401,12 @@ export const SlashCommand: Story = {
 	},
 	play: async ({ canvas, userEvent }) => {
 		const field = canvas.getByRole("combobox", { name: "Message Archie" });
-		await userEvent.type(field, "/the");
-		await expect(canvas.getByRole("option", { name: /\/theme/ })).toHaveAttribute("aria-selected", "true");
+		await userEvent.type(field, "/comm");
+		await expect(canvas.getAllByRole("option")).toHaveLength(2);
+		await expect(canvas.getByRole("option", { name: /command-1/ })).toHaveAttribute("aria-selected", "true");
 		await userEvent.keyboard("{Enter}");
-		await expect(field).toHaveValue("/theme ");
-		await userEvent.type(field, "blue{Enter}");
-		await archieFinished(canvas);
-		await expect(canvas.getByText("Updated theme to blue palette")).toBeInTheDocument();
+		await expect(field).toHaveValue("/command-1 ");
+		await expect(canvas.queryByRole("listbox")).not.toBeInTheDocument();
 	},
 };
 

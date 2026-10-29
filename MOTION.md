@@ -57,7 +57,7 @@ Use these named patterns before inventing new motion. Gesture patterns live in `
 | Glide    | Directional navigation                 | `slideVariants` (`custom={1 \| -1}`), `glidePattern` |
 | Dismiss  | Content removed or closed              | `dismissVariants`; table/list rows: `rowRemoveVariants` |
 | Confirm  | Lightweight success feedback           | `confirmPattern`                                |
-| Slide up | Content taking over a spot, gently (the next clarifying question) | `slideUpVariants`: 12px up on the standard curve, the fade finishing sooner |
+| Slide up | Content taking over a spot, gently (the next clarifying question, the permission prompt) | `slideUpVariants`: 12px up on the standard curve, the fade finishing sooner; its `exit` slides back down 12px on the exit timing (Deny / Allow) |
 | Feed     | A live list that keeps growing (Archie's activity feed) | `feedItemVariants` with `AnimatePresence mode="popLayout"` and `layout` (`layoutSpring`): new items slide up into place, the oldest slides out at the top |
 | Pending  | Work in progress on an element's behalf | `pendingIconVariants`, `pendingSurfaceVariants`; a status label: `pendingTextVariants` (a slow highlight sweep, `motionDuration.pendingShimmer`); the icon beside it: `pendingBallVariants` (a ball bouncing with gravity, squash and stretch; ActivityIndicator only, DESIGN.md) |
 

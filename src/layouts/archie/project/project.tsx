@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Database, FileIcon, Frame, Mic, MousePointer2, Palette, Plus } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { ChatMessage } from "@/components/data-display/chat-message";
 import {
@@ -27,7 +27,7 @@ import {
 import { Topbar, TopbarCenter, TopbarEnd, TopbarStart } from "@/components/navigation/topbar";
 import { TooltipProvider } from "@/components/overlays/tooltip";
 import { Typography } from "@/components/typography";
-import { revealVariants, useMotionPreference } from "@/lib/motion";
+import { fadeVariants, revealVariants, slideUpVariants, useMotionPreference } from "@/lib/motion";
 
 import {
 	answerQuestion,
@@ -55,6 +55,7 @@ import {
 import {
 	ActivityFeed,
 	ApprovalPrompt,
+	ApprovalRecord,
 	AnswersMessage,
 	ArchieText,
 	DaySeparator,
@@ -102,13 +103,18 @@ const answersText = (intro: string, answers: string[]) => [intro, ...answers.map
 
 /** Archie's slash commands. Picking one writes "/name " into the message; the responder acts on it. */
 const commands = [
-	{ name: "prototype", description: "Generate a prototype from the blueprint" },
-	{ name: "fullstack", description: "Generate the full-stack application" },
-	{ name: "theme", description: "Change the color scheme, like /theme green" },
-	{ name: "module", description: "Add a module, like /module wishlist" },
-	{ name: "contrast", description: "Check color contrast against WCAG AA" },
-	{ name: "explain", description: "Explain part of your app, like /explain fit check" },
+	// Prototype shortcuts first, under "Preview interactions": each plays one scenario of the chat, at any point in the
+	// conversation. A divider separates them from Archie's commands.
+	{ name: "ask-permission", group: "prototype", send: true },
+	// Placeholders until Archie's command set is defined (prds/chat-behavior-system.md rule 12).
+	{ name: "command-1" },
+	{ name: "command-2" },
 ];
+
+/** What the person's bubble says for each prototype shortcut, instead of the command itself. */
+const shortcutBubbles: Record<string, string> = {
+	"/ask-permission": "Show ask permission interaction",
+};
 
 /** Ways to start an empty chat (Prompt Starters): one to build, two to learn. */
 const starters = [
@@ -150,7 +156,6 @@ function ArchieTurnView({
 	onAnswer,
 	onEditAnswer,
 	onChoose,
-	onDecide,
 	onRetry,
 	onRestore,
 	onViewCode,
@@ -163,8 +168,6 @@ function ArchieTurnView({
 	/** Starts changing an answered question, or (`undefined`) keeps its answer. */
 	onEditAnswer: (blockId: string, index: number | undefined) => void;
 	onChoose: (blockId: string, step: NextStep) => void;
-	/** Allow or Deny on an approval prompt: records the decision and sends its message. */
-	onDecide: (blockId: string, choice: "allow" | "deny", message: string) => void;
 	onRetry: (blockId: string, message: string) => void;
 	onRestore: (version: number) => void;
 	onViewCode: () => void;
@@ -205,13 +208,8 @@ function ArchieTurnView({
 					<NextSteps block={block} locked={!latest} onChoose={(step) => onChoose(block.id, step)} />
 				);
 			case "approval":
-				return (
-					<ApprovalPrompt
-						block={block}
-						active={latest && turn.state === "done"}
-						onDecide={(choice, message) => onDecide(block.id, choice, message)}
-					/>
-				);
+				// While it waits, the prompt is above the composer; the thread keeps the record once it's decided.
+				return <ApprovalRecord block={block} waiting={latest && turn.state === "done" && !block.decided} />;
 			case "files":
 				return <FilesProcessed block={block} onViewCode={onViewCode} />;
 			case "version":
@@ -224,7 +222,7 @@ function ArchieTurnView({
 	}
 
 	return (
-		<div data-slot='archie-turn' className='flex flex-col gap-3'>
+		<div data-slot='archie-turn' className='flex flex-col gap-4'>
 			{turn.blocks.map((block) => {
 				const content = render(block);
 				return content ? (
@@ -253,6 +251,7 @@ function ArchieTurnView({
  * answers each request in one turn: a live status, then blocks (thinking, text, questions, progress, files, versions).
  */
 function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond }: ProjectProps) {
+	const { prefersReducedMotion } = useMotionPreference();
 	const [phase, setPhase] = useState<Phase>(defaultPhase);
 	const [thread, setThread] = useState(data.thread);
 	const [answering, setAnswering] = useState(false);
@@ -264,6 +263,13 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 	const stopAnswering = useRef<(() => void) | null>(null);
 	const activeTurn = useRef<string | null>(null);
 	const phaseLabel = phases.find(({ value }) => value === phase)?.label;
+	// A permission request waiting on the person: Archie's latest turn ended on one, undecided.
+	const lastItem = thread.at(-1);
+	const pendingApproval =
+		lastItem?.kind === "archie" && lastItem.state === "done"
+			? lastItem.blocks.find((block): block is Extract<ArchieBlock, { kind: "approval" }> => block.kind === "approval" && !block.decided)
+			: undefined;
+	const showApproval = Boolean(pendingApproval) && !answering;
 	// Without a responder, a thread ending on the person's message shows Figma's "Thinking…".
 	const waiting = !respond && thread.at(-1)?.kind === "person";
 
@@ -308,13 +314,15 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 
 	/** A message Archie can take now: the answer to an open question (rules 3, 4), or a new request. */
 	function deliver(text: string) {
-		const questions = openQuestions(thread);
+		// A slash command is never an answer: it goes to Archie as a request, even with a question open.
+		const questions = text.startsWith("/") ? undefined : openQuestions(thread);
 		if (questions) {
 			// A typed letter ("b", "B.") picks that option, the same as clicking it.
 			answer(questions, choiceForLetter(questions, text) ?? text);
 			return;
 		}
-		setThread((current) => [...current, person(text)]);
+		// A prototype shortcut shows as what it does ("Show ask permission interaction"); Archie still gets the command.
+		setThread((current) => [...current, person(shortcutBubbles[text.trim()] ?? text)]);
 		request({ kind: "message", text });
 	}
 
@@ -472,10 +480,6 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 											setThread((current) => settleBlock(current, blockId, step.label));
 											send(step.label);
 										}}
-										onDecide={(blockId, choice, message) => {
-											setThread((current) => settleBlock(current, blockId, choice));
-											send(message);
-										}}
 										onRetry={(blockId, message) => {
 											setThread((current) => settleBlock(current, blockId));
 											send(message);
@@ -501,12 +505,38 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 								/>
 							)}
 						</ChatPanelBody>
-						<ChatPanelFooter>
+						<ChatPanelFooter className='relative'>
+							{/* A permission request waits on top of the composer: bottom-aligned with it, centered, as wide as it
+							    (DESIGN.md "PromptAlert"), sliding up when Archie asks. The composer under it is inert until the
+							    person decides; the thread then keeps the record. */}
+							<AnimatePresence initial={false}>
+								{showApproval && pendingApproval && (
+									<motion.div
+										key={pendingApproval.id}
+										className='absolute inset-x-2 bottom-2 z-10'
+										variants={prefersReducedMotion ? fadeVariants : slideUpVariants}
+										initial='initial'
+										animate='animate'
+										// Deny or Allow: it slides back down as it leaves (Slide up's exit).
+										exit='exit'
+									>
+										<ApprovalPrompt
+											block={pendingApproval}
+											onDecide={(choice, message) => {
+												setThread((current) => settleBlock(current, pendingApproval.id, choice));
+												send(message);
+											}}
+										/>
+									</motion.div>
+								)}
+							</AnimatePresence>
 							{/* While Archie works, the button is Stop; typing turns it into Add to queue (rule 7). */}
 							<PromptComposer
+								inert={showApproval || undefined}
 								onSubmit={send}
 								onStop={answering ? stop : undefined}
 								commands={commands}
+								commandGroups={{ prototype: "Preview interactions" }}
 								onVoice={() => {}}
 							>
 								<PromptComposerTextarea placeholder='Message Archie or type / for options' aria-label='Message Archie' />

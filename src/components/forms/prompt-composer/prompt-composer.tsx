@@ -29,7 +29,13 @@ import { cn } from "@/lib/utils";
 // intercept-ucl's ChatComposer does (decision 2026-10-29).
 
 /** A slash command: typed as "/name", described in the commands menu. */
-type PromptComposerCommand = { name: string; description: string };
+/**
+ * A slash command: typed as "/name", described in the commands menu. Commands are listed in the order given; a divider
+ * separates them wherever `group` changes (e.g. the app's commands, then a "prototype" group of shortcuts). Picking one
+ * writes "/name " into the message; with `send`, picking it sends "/name" right away instead (a shortcut that needs no
+ * more text).
+ */
+type PromptComposerCommand = { name: string; description?: string; group?: string; send?: boolean };
 
 type PromptComposerContextValue = {
 	value: string;
@@ -86,6 +92,8 @@ type PromptComposerProps = Omit<React.ComponentProps<"form">, "onSubmit" | "defa
 	 * "/name " into the message, for the app to act on when it's sent.
 	 */
 	commands?: PromptComposerCommand[];
+	/** Titles for the command groups, by `group` ("prototype": "Preview interactions"), shown under each group's divider. */
+	commandGroups?: Record<string, string>;
 };
 
 /** The message box for talking to Archie. Enter sends, Shift+Enter adds a line, "/" opens the commands. */
@@ -98,6 +106,7 @@ function PromptComposer({
 	onVoice,
 	onStop,
 	commands = [],
+	commandGroups = {},
 	className,
 	children,
 	...props
@@ -159,11 +168,17 @@ function PromptComposer({
 			hover(command) {
 				setActiveIndex(matches.indexOf(command));
 			},
-			// A picked command replaces the one being typed, or goes before the text already there.
+			// A picked command replaces the one being typed, or goes before the text already there. A `send` command goes
+			// straight to `onSubmit` and the box clears.
 			pick(command) {
-				setValue(`/${command.name} ${value.replace(/^\/\S*\s?/, "")}`);
 				setMenuForced(false);
 				fieldRef.current?.focus();
+				if (command.send) {
+					onSubmit?.(`/${command.name}`);
+					setValue("");
+					return;
+				}
+				setValue(`/${command.name} ${value.replace(/^\/\S*\s?/, "")}`);
 			},
 			show() {
 				if (value === "") {
@@ -211,21 +226,36 @@ function PromptComposer({
 							exit={{ opacity: 0, transition: { duration: 0 } }}
 							className='absolute inset-x-0 bottom-full z-50 mb-2 flex max-h-64 origin-bottom flex-col gap-0.5 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-xl'
 						>
-							{matches.map((command) => (
-								<li
-									key={command.name}
-									id={`${menuId}-${command.name}`}
-									role='option'
-									aria-selected={command === active}
-									// Keeps focus in the field, so picking doesn't close the menu first.
-									onMouseDown={(event) => event.preventDefault()}
-									onClick={() => context.menu.pick(command)}
-									onMouseMove={() => context.menu.hover(command)}
-									className='flex cursor-pointer items-baseline gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent aria-selected:text-accent-foreground'
-								>
-									<span className='font-medium'>/{command.name}</span>
-									<span className='truncate text-xs text-muted-foreground'>{command.description}</span>
-								</li>
+							{matches.map((command, index) => (
+								<React.Fragment key={command.name}>
+									{/* A divider between groups of commands; not an option, so the keyboard skips it. */}
+									{index > 0 && matches[index - 1].group !== command.group && (
+										<li role='separator' aria-hidden className='-mx-1 my-1 h-px shrink-0 bg-border' />
+									)}
+									{/* The group's title, under its divider (or at the top when filtering leaves only that group). */}
+									{command.group &&
+										commandGroups[command.group] &&
+										(index === 0 || matches[index - 1].group !== command.group) && (
+											<li aria-hidden className='shrink-0 px-2 pt-1 pb-0.5 text-xs font-medium text-muted-foreground'>
+												{commandGroups[command.group]}
+											</li>
+										)}
+									<li
+										id={`${menuId}-${command.name}`}
+										role='option'
+										aria-selected={command === active}
+										// Keeps focus in the field, so picking doesn't close the menu first.
+										onMouseDown={(event) => event.preventDefault()}
+										onClick={() => context.menu.pick(command)}
+										onMouseMove={() => context.menu.hover(command)}
+										className='flex cursor-pointer items-baseline gap-2 rounded-md px-2 py-1.5 text-sm aria-selected:bg-accent aria-selected:text-accent-foreground'
+									>
+										<span className='shrink-0 font-medium whitespace-nowrap'>/{command.name}</span>
+										{command.description && (
+											<span className='truncate text-xs text-muted-foreground'>{command.description}</span>
+										)}
+									</li>
+								</React.Fragment>
 							))}
 						</motion.ul>
 					)}
