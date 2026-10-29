@@ -28,7 +28,7 @@ type ActivityIndicatorIconProps = React.ComponentProps<"span"> & {
 function ActivityIndicatorIcon({ animate = true, className, ...props }: ActivityIndicatorIconProps) {
 	const { prefersReducedMotion } = useMotionPreference();
 	const state = animate && !prefersReducedMotion ? "pending" : "idle";
-	// A still ball is just a dot: center it in the box, like a text bullet ("Thought for 3s").
+	// A still ball is just a dot: center it in the box, like a text bullet.
 	const dot = !animate;
 
 	return (

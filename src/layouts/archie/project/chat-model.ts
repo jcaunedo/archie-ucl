@@ -41,7 +41,7 @@ type ArchieBlock =
 			/** The answered question the person is changing, if any. */
 			editing?: number;
 	  }
-	/** A long step with its own status line: "Creating project blueprint…" → "Blueprint generated · 7s". */
+	/** A long step with its own status line: "Connecting Stripe…" → "Stripe connected · 2s". */
 	| {
 			kind: "progress";
 			id: string;

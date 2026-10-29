@@ -160,6 +160,37 @@ const iconSwapReducedVariants: Variants = {
 };
 
 /**
+ * Draw: a stroked mark drawn on as it appears, e.g. a step's check when the step finishes (ActivityFeed). Put it on a
+ * `motion.path` (`pathLength` 0 → 1) whose path starts where the stroke should start (a check: the short stroke first).
+ * The stroke draws on the standard curve; it's visible at once so the line's start shows. Under reduced motion, use
+ * `iconSwapReducedVariants` (the same states): the mark appears at once.
+ */
+const drawVariants: Variants = {
+  hidden: { pathLength: 0, opacity: 0 },
+  shown: {
+    pathLength: 1,
+    opacity: 1,
+    transition: { pathLength: standardTransition, opacity: { duration: motionDuration.instant } },
+  },
+};
+
+/**
+ * Grow in: a small icon appearing in place, e.g. a check when a step finishes (Loader's brand and done). It grows from
+ * `motionScale.iconIn` on the standard curve, slow enough that the growth reads at 16px, while the fade finishes sooner
+ * (as Slide up does). Show it on a row that's already in place, not one that's fading in, or the fade hides the growth.
+ * Mount it with `initial='hidden'` and `animate='shown'`. Under reduced motion, use `iconSwapReducedVariants` (the same
+ * states): an instant switch.
+ */
+const iconInVariants: Variants = {
+  hidden: { opacity: 0, scale: motionScale.iconIn },
+  shown: {
+    opacity: 1,
+    scale: 1,
+    transition: { ...standardTransition, duration: motionDuration.slow, opacity: { duration: motionDuration.normal } },
+  },
+};
+
+/**
  * Pending: something is working on the element's behalf (e.g. AI generating text). A looping
  * pulse — `animate="pending"` while busy, `"idle"` otherwise; returning to idle eases back to rest.
  * An opacity pulse, like a loading skeleton. Three variants:
@@ -258,7 +289,8 @@ const pendingTextVariants: Variants = {
  * up (a quadratic ease-in, the curve of free fall); squashes on contact, wider and shorter with about the same area;
  * springs off and rises slowing down (a quadratic ease-out), stretched a little along the motion while it's fastest.
  * Contact sits in the middle of each `pendingBounce` loop. Scale it from its bottom (`originY: 1`), so the squash stays
- * on the floor.
+ * on the floor. It rises `motionDistance.bounce` (px); a ball that scales with its box passes `custom` as a share of its
+ * own height instead (Loader: `${motionScale.ballRise * 100}%`).
  */
 const gravityIn = [0.11, 0, 0.5, 0] as const;
 const gravityOut = [0.5, 1, 0.89, 1] as const;
@@ -274,12 +306,12 @@ const flightTiming: Transition = { ...bounceLoop, times: [0, 0.45, 0.55, 1], eas
 
 const pendingBallVariants: Variants = {
   idle: { y: 0, scaleX: 1, scaleY: 1, transition: standardTransition },
-  pending: {
-    y: [-motionDistance.bounce, 0, 0, -motionDistance.bounce],
+  pending: (bounce: number | `${number}%` = motionDistance.bounce) => ({
+    y: typeof bounce === "number" ? [-bounce, 0, 0, -bounce] : [`-${bounce}`, "0%", "0%", `-${bounce}`],
     scaleX: [1, motionScale.ballNarrow, motionScale.ballSpread, motionScale.ballNarrow, 1],
     scaleY: [1, motionScale.ballStretch, motionScale.ballSquash, motionScale.ballStretch, 1],
     transition: { y: flightTiming, scaleX: squashTiming, scaleY: squashTiming },
-  },
+  }),
 };
 
 export {
@@ -296,6 +328,8 @@ export {
   staggerContainerVariants,
   iconSwapVariants,
   iconSwapReducedVariants,
+  iconInVariants,
+  drawVariants,
   pendingIconVariants,
   pendingIconReducedVariants,
   pendingSurfaceVariants,

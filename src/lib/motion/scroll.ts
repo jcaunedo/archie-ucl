@@ -62,12 +62,17 @@ function scrollTargetFor(element: HTMLElement, container: HTMLElement) {
  * movement instead of waiting for the layout first. Interruptible: any wheel, touch, pointer or key
  * input from the user stops it, and so does `element` leaving the page.
  * Reduced motion: jumps straight to the target.
+ * `onEnd` is called once when the scroll ends: arrived, interrupted or stopped.
  * Returns a function that stops the scroll.
  */
-function scrollIntoViewSmoothly(element: HTMLElement, { reducedMotion = false } = {}) {
+function scrollIntoViewSmoothly(
+	element: HTMLElement,
+	{ reducedMotion = false, onEnd }: { reducedMotion?: boolean; onEnd?: () => void } = {},
+) {
 	const container = scrollContainerOf(element);
 	if (reducedMotion) {
 		scrollContainerTo(container, scrollTargetFor(element, container));
+		onEnd?.();
 		return () => {};
 	}
 
@@ -81,9 +86,14 @@ function scrollIntoViewSmoothly(element: HTMLElement, { reducedMotion = false } 
 	});
 
 	const interruptions = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+	let ended = false;
 	function stop() {
 		controls.stop();
 		for (const event of interruptions) window.removeEventListener(event, stop);
+		if (!ended) {
+			ended = true;
+			onEnd?.();
+		}
 	}
 	for (const event of interruptions) window.addEventListener(event, stop, { passive: true });
 	controls.then(stop);

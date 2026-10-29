@@ -117,9 +117,54 @@ export const EmptyChat: Story = {
 };
 
 /**
- * Archie's clarifying questions, one at a time (rule 3).
+ * The default flow, as in production: a request to build goes straight to the blueprint, no questions first.
+ * Test: picking the build starter drafts the blueprint and fills Plan; Archie says which setup it chose for what the
+ * request left open; Plan fills under the feed's last step ("Generating blueprint"), with no progress line after; no
+ * clarifying question is asked, and it ends on the overview with no "What's next" card; "Thought
+ * for Ns" shows the brand A; opened, its label turns foreground and the A stays brand.
+ */
+export const PromptToBlueprint: Story = {
+	args: {
+		data: sampleNewProject,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		await userEvent.click(canvas.getByRole("button", { name: /^Create an e-commerce store/ }));
+		await archieFinished(canvas);
+		// Plan fills in under the feed's last step, "Generating blueprint": no progress line after the thinking.
+		await expect(canvas.getByRole("log")).toHaveTextContent("Blueprint overview");
+		await expect(canvas.queryByText("Blueprint generated", { exact: false })).not.toBeInTheDocument();
+		await userEvent.click(canvas.getByRole("button", { name: /^Thought for/ }));
+		await expect(canvas.getByRole("log")).toHaveTextContent("Generating blueprint");
+		await userEvent.click(canvas.getByRole("button", { name: /^Thought for/ }));
+		await expect(canvas.getByRole("log")).toHaveTextContent("I chose a common setup");
+		await expect(canvas.queryByText(/^Question 1 of/)).not.toBeInTheDocument();
+		for (const module of blueprint.modules) {
+			await expect(canvas.getByText(module.name)).toBeInTheDocument();
+		}
+		// The default flow ends on the overview: no "What's next" card.
+		await expect(canvas.queryByRole("group", { name: "What's next" })).not.toBeInTheDocument();
+		await expect(canvas.getByRole("log")).toHaveTextContent("A prototype is the quickest way to see it working.");
+
+		// "Thought for Ns" shows the brand A; opening it turns the label to foreground, and the A stays brand.
+		const thought = canvas.getByRole("button", { name: /^Thought for/ });
+		const mark = thought.querySelector<HTMLElement>("[data-slot='loader']")!;
+		await expect(mark).toHaveAttribute("data-state", "brand");
+		const brand = getComputedStyle(mark).color;
+		const muted = getComputedStyle(thought).color;
+		await userEvent.click(thought);
+		await waitFor(() => expect(getComputedStyle(thought).color).not.toBe(muted));
+		await expect(getComputedStyle(mark).color).toBe(brand);
+		await userEvent.click(thought);
+	},
+};
+
+/**
+ * Archie's clarifying questions, one at a time (rule 3): the "Clarification questions" preview interaction
+ * (/clarification-questions), opened on the prompt.
  * Test: choosing an option moves to the next question; a typed message answers the one after it; "You decide", the last
- * option, answers the third; typing a letter ("a.") picks that option on the fourth.
+ * option, answers the third; typing a letter ("a.") picks that option on the fourth. The blueprint then ends on "What's
+ * next", and the thread glides to it.
  */
 export const ClarifyingQuestions: Story = {
 	args: {
@@ -143,6 +188,12 @@ export const ClarifyingQuestions: Story = {
 		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "a.{Enter}");
 		await archieFinished(canvas);
 		await expect(canvas.getByRole("log")).toHaveTextContent(`4. ${blueprint.clarifyingQuestions[3].options[0]}`);
+
+		// The answers draft the blueprint, ending on "What's next": the thread glides to the card, its last line in view.
+		const log = canvas.getByRole("log");
+		await expect(canvas.getByRole("group", { name: "What's next" })).toBeInTheDocument();
+		await waitFor(() => expect(log.scrollHeight - log.scrollTop - log.clientHeight).toBeLessThan(2));
+		await expect(canvas.getByText("Or ask for something else below.")).toBeVisible();
 	},
 };
 
@@ -169,7 +220,7 @@ export const UnreadableAnswer: Story = {
 
 		await userEvent.click(option(canvas, second.options[0]));
 		await archieFinished(canvas);
-		await expect(canvas.getByText("Blueprint generated", { exact: false })).toBeInTheDocument();
+		await expect(canvas.getByRole("log")).toHaveTextContent("Blueprint overview");
 	},
 };
 
@@ -346,8 +397,9 @@ export const AskPermission: Story = {
 };
 
 /**
- * Prototype shortcuts in the "/" menu, after a divider: /ask-permission plays the approval scenario at any stage.
- * Test: with a clarifying question open, the shortcut isn't taken as an answer; Archie asks permission.
+ * Prototype shortcuts in the "/" menu, under "Preview interactions": each plays its scenario at any stage.
+ * Test: with a clarifying question open, /ask-permission isn't taken as an answer; Archie asks permission.
+ * /code-generation plays a build; /clarification-questions asks the clarifying questions.
  */
 export const PrototypeShortcut: Story = {
 	args: {
@@ -373,6 +425,15 @@ export const PrototypeShortcut: Story = {
 		await archieFinished(canvas);
 		await expect(canvas.getByRole("log")).toHaveTextContent("Show code generation interaction");
 		await expect(canvas.getByRole("button", { name: /files processed/ })).toBeInTheDocument();
+
+		// Clarification questions plays the question-first flow: a new first question waits for an answer.
+		const firstQuestion = `Question 1 of ${blueprint.clarifyingQuestions.length}`;
+		const asked = canvas.queryAllByText(firstQuestion).length;
+		await userEvent.type(composer, "/clar");
+		await userEvent.keyboard("{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("Show clarification questions interaction");
+		await expect(canvas.getAllByText(firstQuestion)).toHaveLength(asked + 1);
 	},
 };
 
@@ -456,7 +517,8 @@ export const ArchieReplies: Story = {
 		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "What's a database relationship?{Enter}");
 		await archieFinished(canvas);
 		await expect(canvas.getByRole("log")).toHaveTextContent("That's a one-to-many relationship.");
-		await expect(canvas.getByRole("button", { name: "Copy" })).toBeInTheDocument();
+		// The latest reply's Copy (the blueprint overview, a Level 2 answer, has its own).
+		await expect(canvas.getAllByRole("button", { name: "Copy" }).at(-1)).toBeInTheDocument();
 		await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
 	},
 };
@@ -480,9 +542,9 @@ async function act(canvas: Canvas, step: () => Promise<void>) {
 }
 
 /**
- * The whole conversation played out on its own, from an empty chat: the prompt, the clarifying questions, the blueprint,
- * Generate Prototype, a change, an unclear message and a failure with Retry. Watch it in Storybook; it's left out of
- * `npm test` because it runs for a few minutes.
+ * The whole conversation played out on its own, from an empty chat: the prompt, the blueprint (the default flow, no
+ * questions first), Generate Prototype, a change, an unclear message and a failure with Retry. Watch it in Storybook;
+ * it's left out of `npm test` because it runs for a few minutes.
  */
 export const SimulatedConversation: Story = {
 	tags: ["!test"],
@@ -496,16 +558,6 @@ export const SimulatedConversation: Story = {
 		const type = (text: string) => person.type(composer(), `${text}{Enter}`);
 
 		await act(canvas, () => type("Create an e-commerce store selling high-end accessories for road bikes."));
-		for (const [index, question] of blueprint.clarifyingQuestions.entries()) {
-			const last = index === blueprint.clarifyingQuestions.length - 1;
-			const pick = () => person.click(option(canvas, question.options[0]));
-			if (last) {
-				await act(canvas, pick);
-			} else {
-				await pick();
-				await new Promise((resolve) => setTimeout(resolve, 1_200));
-			}
-		}
 		await act(canvas, () => person.click(canvas.getByRole("button", { name: "Generate Prototype" })));
 		await act(canvas, () => type("Change the accent color to green"));
 		await act(canvas, () => type("make it better"));

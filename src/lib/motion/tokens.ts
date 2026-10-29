@@ -72,6 +72,11 @@ const motionScale = {
 	ballSpread: 1.3,
 	ballStretch: 1.1,
 	ballNarrow: 0.92,
+	/**
+	 * How high Loader's ball rises, in its own heights: 1, so the bounce fills the frame at any size (Figma "loader": a
+	 * 14px ball in 28px, 8px in the chat's 16px).
+	 */
+	ballRise: 1,
 } as const;
 
 /** Degrees. Keep rotation under 2 degrees and use it sparingly. */

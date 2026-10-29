@@ -84,6 +84,7 @@ export {
 	type ActivityIndicatorIconProps,
 	type ActivityIndicatorProps,
 } from "@/components/feedback/activity-indicator";
+export { Loader, loaderVariants, type LoaderProps } from "@/components/feedback/loader";
 export {
 	PromptAlert,
 	PromptAlertActions,

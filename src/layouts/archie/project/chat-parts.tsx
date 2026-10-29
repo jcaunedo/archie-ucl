@@ -30,15 +30,20 @@ import {
 	PromptAlertTitle,
 } from "@/components/feedback/prompt-alert";
 import { ActivityIndicatorIcon } from "@/components/feedback/activity-indicator";
+import { Loader } from "@/components/feedback/loader";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/overlays/tooltip";
 import {
+	drawVariants,
 	expandVariants,
 	fadeVariants,
 	feedItemVariants,
+	iconSwapReducedVariants,
 	layoutSpring,
 	reducedMotionTransition,
+	revealVariants,
 	scrollIntoViewSmoothly,
 	slideUpVariants,
+	staggerContainerVariants,
 	useExpandClip,
 	useMotionPreference,
 } from "@/lib/motion";
@@ -130,11 +135,18 @@ function Disclosure({
 					type='button'
 					aria-expanded={open}
 					onClick={() => setOpen((current) => !current)}
-					className='group flex min-w-0 items-center gap-1.5 rounded-sm text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
+					// Open (Figma 61:706), the label turns foreground and medium, and the chevron `icon`; an icon with its own
+					// color (the brand A) keeps it. 6px after the icon, 2px between the label and the chevron.
+					className='group flex min-w-0 items-center gap-1.5 rounded-sm text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring aria-expanded:text-foreground'
 				>
 					{icon}
-					<span className='truncate'>{label}</span>
-					<ChevronRight aria-hidden className='size-4 shrink-0 transition-transform group-aria-expanded:rotate-90' />
+					<span className='flex min-w-0 items-center gap-[2px]'>
+						<span className='truncate group-aria-expanded:font-medium'>{label}</span>
+						<ChevronRight
+							aria-hidden
+							className='size-4 shrink-0 transition-transform group-aria-expanded:rotate-90 group-aria-expanded:text-icon'
+						/>
+					</span>
 				</button>
 				{end}
 			</div>
@@ -246,15 +258,15 @@ function ArchieText({ text }: { text: string }) {
 /* Blocks                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/** A duration as Archie shows it: "12s" under a minute, "1m 05s" from there. */
+/** A duration as Archie shows it: "12s" under a minute, "1m 5s" from there (no leading zero). */
 function formatDuration(seconds: number) {
 	const minutes = Math.floor(seconds / 60);
 	const rest = seconds % 60;
-	return minutes > 0 ? `${minutes}m ${String(rest).padStart(2, "0")}s` : `${rest}s`;
+	return minutes > 0 ? `${minutes}m ${rest}s` : `${rest}s`;
 }
 
 /**
- * How long Archie has been working on this turn, after its live status ("· 1m 05s"), ticking each second from the
+ * How long Archie has been working on this turn, after its live status ("· 1m 5s"), ticking each second from the
  * turn's start. Hidden from screen readers: a value changing every second shouldn't be announced.
  */
 function ElapsedTime({ since }: { since: number }) {
@@ -271,12 +283,39 @@ function ElapsedTime({ since }: { since: number }) {
 	);
 }
 
+/**
+ * A finished step's check, drawn on from its short stroke (Draw). Lucide's Check path, reversed so the stroke starts at
+ * the short end, so it matches the other checks.
+ */
+function DrawnCheck() {
+	const { prefersReducedMotion } = useMotionPreference();
+	return (
+		<svg
+			aria-hidden
+			viewBox='0 0 24 24'
+			fill='none'
+			stroke='currentColor'
+			strokeWidth={2}
+			strokeLinecap='round'
+			strokeLinejoin='round'
+			className='size-3.5 text-icon-muted'
+		>
+			<motion.path
+				d='M4 12l5 5L20 6'
+				variants={prefersReducedMotion ? iconSwapReducedVariants : drawVariants}
+				initial='hidden'
+				animate='shown'
+			/>
+		</svg>
+	);
+}
+
 /** The live feed shows this many steps at most (decision 2026-10-29); older ones slide out at the top. */
-const feedSize = 2;
+const feedSize = 5;
 
 /**
  * What Archie is doing, under its status (Figma "Thinking - How the system is working"): its latest steps as a live feed,
- * two at most. Each new step slides up into place at the bottom and the oldest slides out at the top (Feed). Finished steps
+ * five at most. Each new step slides up into place at the bottom and the oldest slides out at the top (Feed). Finished steps
  * have a check; the newest, still in progress, bounces the ball and has full contrast. Hidden from screen readers: the status is the
  * live region, and the same steps are in "Thought for Ns" afterwards (progress PRD: don't announce every update).
  */
@@ -302,13 +341,16 @@ function ActivityFeed({ steps }: { steps: string[] }) {
 							className={cn("flex items-center gap-1.5 text-sm", latest ? "text-foreground" : "text-muted-foreground")}
 						>
 							{/* The same 14px column as the status's ball, so the steps line up under its label. The step in progress
-							    bounces the ball (Archie's one activity icon); finished ones have a check. */}
+							    bounces the ball (Archie's one activity icon); when it finishes, its check draws on (Draw). The check's
+							    own AnimatePresence lets it play even on a step that was in the feed from its first render. */}
 							{latest ? (
 								<ActivityIndicatorIcon />
 							) : (
-								<span className='flex size-3.5 shrink-0 items-center justify-center'>
-									<Check className='size-3.5 text-icon-muted' />
-								</span>
+								<AnimatePresence>
+									<span key='check' className='flex size-3.5 shrink-0 items-center justify-center'>
+										<DrawnCheck />
+									</span>
+								</AnimatePresence>
 							)}
 							<span className='min-w-0 truncate'>{step}</span>
 						</motion.li>
@@ -323,14 +365,30 @@ function ActivityFeed({ steps }: { steps: string[] }) {
 function ThoughtDisclosure({ block }: { block: Block<"thought"> }) {
 	return (
 		<Disclosure
-			icon={<ActivityIndicatorIcon animate={false} className='text-icon-muted' />}
+			// Figma project 26:1053: the loader's brand state, 16px. It grows in as the thinking ends and stays brand when the
+			// steps are open (the label turns foreground instead).
+			icon={<Loader state='brand' className='size-4' />}
 			label={`Thought for ${formatDuration(block.seconds)}`}
 		>
-			<ul className='flex flex-col gap-1 border-l border-border pl-3 text-sm text-muted-foreground'>
-				{block.steps.map((step) => (
-					<li key={step}>{step}</li>
+			{/* Figma 61:706: the steps on a timeline under the A, 4px apart. A hollow node in the A's 16px column, 6px before
+			    each step; one line through the nodes, from the first step's top to the last step's node. */}
+			<ol className='flex flex-col gap-1 text-sm text-muted-foreground'>
+				{block.steps.map((step, index) => (
+					<li key={step} className='relative flex items-start gap-1.5'>
+						<span
+							aria-hidden
+							className={cn(
+								"absolute top-0 left-2 w-[1.1429px] -translate-x-1/2 bg-foreground-subtle",
+								index === block.steps.length - 1 ? "h-2.5" : "-bottom-1",
+							)}
+						/>
+						<span aria-hidden className='relative flex h-5 w-4 shrink-0 items-center justify-center'>
+							<span className='size-[7.4286px] rounded-full border-[1.1429px] border-foreground-subtle bg-background' />
+						</span>
+						<span className='min-w-0'>{step}</span>
+					</li>
 				))}
-			</ul>
+			</ol>
 		</Disclosure>
 	);
 }
@@ -586,7 +644,8 @@ function ProgressLine({ block }: { block: Block<"progress"> }) {
 
 	return (
 		<p className={cn("flex items-center gap-1.5 text-sm", block.state === "running" ? "text-brand" : "text-muted-foreground")}>
-			<StepIcon state={block.state} />
+			{/* Figma project 26:1053: a finished step ("Stripe connected · 2s") shows the loader's done check, 16px. */}
+			{block.state === "done" ? <Loader state='done' className='size-4' /> : <StepIcon state={block.state} />}
 			{label}
 		</p>
 	);
@@ -612,8 +671,10 @@ function NextSteps({
 	const locked = lockedProp || block.chosen !== undefined;
 	const steps = block.steps;
 
+	// Flow: the rows, then "Or ask…", reveal one after another as the card arrives (the turn's Reveal starts them). The
+	// scroll margin matches the thread's padding, so gliding to the card lands at the thread's end.
 	return (
-		<div className='flex flex-col gap-1.5'>
+		<motion.div data-slot='next-steps' variants={staggerContainerVariants} className='flex scroll-mb-4 flex-col gap-1.5'>
 			<div
 				role='group'
 				aria-labelledby={`${id}-title`}
@@ -628,8 +689,9 @@ function NextSteps({
 						// Opening a section in Plan sends nothing, so it never locks.
 						const rowLocked = locked && !step.open;
 						return (
-							<button
+							<motion.button
 								key={step.label}
+								variants={revealVariants}
 								type='button'
 								aria-label={step.label}
 								aria-describedby={step.description ? `${id}-${index}` : undefined}
@@ -661,13 +723,17 @@ function NextSteps({
 										)}
 									/>
 								)}
-							</button>
+							</motion.button>
 						);
 					})}
 				</div>
 			</div>
-			{!locked && <p className='pl-1 text-xs text-muted-foreground'>Or ask for something else below.</p>}
-		</div>
+			{!locked && (
+				<motion.p variants={revealVariants} className='pl-1 text-xs text-muted-foreground'>
+					Or ask for something else below.
+				</motion.p>
+			)}
+		</motion.div>
 	);
 }
 
@@ -902,7 +968,9 @@ function ResponseActions({ text, onRetry }: { text: string; onRetry?: () => void
 	const [copied, setCopied] = useState(false);
 
 	return (
-		<div className='flex items-center'>
+		// Close under the reply: 4px after it instead of the turn's 16px gap; with the buttons' own 4px, the icons sit 8px
+		// below the text.
+		<div className='-mt-3 flex items-center'>
 			<IconAction
 				label={copied ? "Copied" : "Copy"}
 				onClick={() => {

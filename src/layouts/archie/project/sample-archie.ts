@@ -24,6 +24,47 @@ const say = (text: string): Step[] => text.split(/(?<=\s)/).map((chunk) => wait(
 /** Steps in the live feed under Archie's status, one every `every` ms (prds/chat-behavior-system.md rule 14). */
 const steps = (labels: string[], every = 700): Step[] => labels.map((label) => wait(every, { type: "step", label }));
 
+/** How long the blueprint's thinking lasts, all its feed steps together, in ms (decision 2026-10-29: 12 seconds). */
+const blueprintThinkingMs = 12000;
+
+/** The blueprint's feed after its first step (which depends on where it starts: the prompt or the answers). */
+const blueprintSteps = [
+	"Defining the system description and type",
+	"Defining user types and access levels",
+	"Identifying services and integrations",
+	"Choosing payment, shipping and email providers",
+	"Structuring core modules",
+	"Defining each module's capabilities",
+	"Deciding who reaches what",
+	"Mapping user types to modules",
+	"Planning the data each module needs",
+	"Checking the blueprint for gaps",
+	// The last step: Plan fills in, one section every `sectionRevealMs`, while it runs.
+	"Generating blueprint",
+];
+
+/** While "Generating blueprint" runs, each Plan section appears this long after the one before (5 sections). */
+const sectionRevealMs = 900;
+
+/**
+ * How long each of `count` steps stays the newest, in ms: uneven, as real work is (some steps go quickly, others take a
+ * while), from half to twice the even share, and always adding up to `total`. A new rhythm each time.
+ */
+function unevenly(total: number, count: number) {
+	const weights = Array.from({ length: count }, () => 0.5 + Math.random() * 1.5);
+	const sum = weights.reduce((all, weight) => all + weight, 0);
+	const times = weights.map((weight) => Math.round((weight / sum) * total));
+	times[count - 1] += total - times.reduce((all, time) => all + time, 0);
+	return times;
+}
+
+/**
+ * The blueprint's feed steps after the first: step `index + 1` comes once the one before it has had its time
+ * (`times[index]`); the first of them comes `first` ms after what came before it.
+ */
+const paced = (labels: string[], times: number[], first: number): Step[] =>
+	labels.map((label, index) => wait(index === 0 ? first : times[index], { type: "step", label }));
+
 /** "What's next" after an update: the steps the sample can carry out, the first one Archie recommends. */
 const next = (steps: NextStep[]): Step => wait(200, { type: "actions", steps });
 
@@ -177,30 +218,47 @@ const clarify: Step[] = [
 	wait(0, { type: "done" }),
 ];
 
-const draftBlueprint: Step[] = [
-	wait(0, { type: "status", label: "Working through the details…" }),
-	...steps([
-		"Read your answers: stock, shipping, checkout and fit checks",
-		"Matched them to how single-seller stores are usually built",
-		`Chose ${blueprint.userTypes.length} user types`,
-		`Grouped the features into ${blueprint.modules.length} modules`,
-		`Picked ${list(blueprint.integrations)} for payments, shipping and email`,
-	]),
-	wait(600, { type: "thought" }),
-	...say(
-		"The blueprint defines the structure of your store: who uses it, its modules, the services underneath and the integrations it connects to. You can review and edit each part in Plan before anything is built.",
-	),
-	wait(300, { type: "progress", id: "blueprint", label: "Creating project blueprint…", doneLabel: "Blueprint generated" }),
-	wait(0, { type: "blueprint", reveal: 0 }),
-	wait(900, { type: "blueprint", reveal: 1 }),
-	wait(900, { type: "blueprint", reveal: 2 }),
-	wait(900, { type: "blueprint", reveal: 3 }),
-	wait(900, { type: "blueprint", reveal: 4 }),
-	wait(900, { type: "blueprint", reveal: 5 }),
-	wait(300, { type: "finish", id: "blueprint", state: "done" }),
-	...say(`**Blueprint overview**
+/**
+ * The blueprint, drafted from the clarifying answers (`answers`, the /clarification-questions flow) or straight from the
+ * prompt (`prompt`, the default, as in production). Straight from the prompt, Archie picks a common setup for what the
+ * prompt leaves open and says which, so the person can change it.
+ */
+function draftBlueprint(from: "prompt" | "answers"): Step[] {
+	// What Archie is doing, as it does it (production's wording): the first step at once, then each one stays the newest
+	// for its own, uneven time (`unevenly()`). The last, "Generating blueprint", fills Plan section by section, so the
+	// thinking lasts `blueprintThinkingMs` in all. From the answers it reads them first instead of working out the context.
+	// No progress line: Plan filling under "Generating blueprint" is the progress (decision 2026-10-29).
+	const times = unevenly(blueprintThinkingMs - 5 * sectionRevealMs, blueprintSteps.length);
+	const reading =
+		from === "prompt"
+			? [
+					wait(0, { type: "status", label: "Understanding your request…" }),
+					wait(0, { type: "step", label: "Understanding your business context" }),
+					wait(times[0], { type: "status", label: "Working through the details…" }),
+				]
+			: [
+					wait(0, { type: "status", label: "Working through the details…" }),
+					wait(0, { type: "step", label: "Reading your answers: stock, shipping, checkout and fit checks" }),
+				];
+	const choices =
+		from === "prompt"
+			? "\n\nWhere your request left something open, I chose a common setup: your own stock from one warehouse, shipping to the US and Canada, guest checkout with optional accounts, and a fit check against each rider's saved bike. Change any of it in Plan, or tell me here."
+			: "";
+	return [
+		...reading,
+		...paced(blueprintSteps, times, from === "prompt" ? 0 : times[0]),
+		wait(0, { type: "blueprint", reveal: 0 }),
+		wait(sectionRevealMs, { type: "blueprint", reveal: 1 }),
+		wait(sectionRevealMs, { type: "blueprint", reveal: 2 }),
+		wait(sectionRevealMs, { type: "blueprint", reveal: 3 }),
+		wait(sectionRevealMs, { type: "blueprint", reveal: 4 }),
+		wait(sectionRevealMs, { type: "blueprint", reveal: 5 }),
+		wait(0, { type: "thought" }),
+		...say(`The blueprint defines the structure of your store: who uses it, its modules, the services underneath and the integrations it connects to. You can review and edit each part in Plan before anything is built.
 
-${blueprint.name} sells its own stock from one warehouse to the US and Canada, with guest checkout and a fit check against each rider's saved bike.
+**Blueprint overview**
+
+${blueprint.name} sells its own stock from one warehouse to the US and Canada, with guest checkout and a fit check against each rider's saved bike.${choices}
 
 **What's included**
 
@@ -210,9 +268,12 @@ ${blueprint.name} sells its own stock from one warehouse to the US and Canada, w
 - **${blueprint.integrations.length} integrations:** ${list(blueprint.integrations)}
 
 Review and edit it in Plan, or start building. A prototype is the quickest way to see it working.`),
-	next([...reviewSteps, nextSteps.prototype, nextSteps.fullStack]),
-	wait(0, { type: "done" }),
-];
+		// "What's next" (review the sections, or build) only in the clarification questions flow; the default flow, as in
+		// production, ends on the overview (decision 2026-10-29).
+		...(from === "answers" ? [next([...reviewSteps, nextSteps.prototype, nextSteps.fullStack])] : []),
+		wait(0, { type: "done" }),
+	];
+}
 
 function build(fullStack: boolean): Step[] {
 	const all = buildFiles(fullStack);
@@ -447,8 +508,9 @@ const sampleTurns: {
 	/** What has to exist first: a drafted blueprint, or a built app. Without it, Archie says so (rule 4). */
 	needs?: "blueprint" | "built";
 }[] = [
-	{ match: new RegExp(`^${answersIntro}`), steps: () => draftBlueprint },
-	{ match: /\b(create|build|make)\b.*\b(app|store|shop)\b/i, steps: () => clarify },
+	{ match: new RegExp(`^${answersIntro}`), steps: () => draftBlueprint("answers") },
+	// The default, as in production: a request to build goes straight to the blueprint. /clarification-questions asks first.
+	{ match: /\b(create|build|make)\b.*\b(app|store|shop)\b/i, steps: () => draftBlueprint("prompt") },
 	{
 		// "How do I update my user types?", "how can I refine my specs", "where do I edit the modules?"
 		needs: "blueprint",
@@ -754,7 +816,7 @@ function unclear(stage: ProjectStage): Step[] {
 		]);
 	}
 	return answer(
-		"I'm not sure what you mean. Tell me what you'd like to build, like \"An online store for road bike accessories\", and I'll start with a few questions.",
+		"I'm not sure what you mean. Tell me what you'd like to build, like \"An online store for road bike accessories\", and I'll draft its blueprint.",
 	);
 }
 
@@ -776,7 +838,7 @@ function notYet(stage: ProjectStage): Step[] {
 		];
 	}
 	return answer(
-		"There's nothing to change yet. Tell me what you'd like to build, and I'll start with a few questions and a blueprint.",
+		"There's nothing to change yet. Tell me what you'd like to build, and I'll draft its blueprint.",
 	);
 }
 
@@ -824,6 +886,8 @@ ${fixes.map((fix, index) => `${index + 1}. ${fix}`).join("\n")}`),
 /** Prototype shortcuts (the commands menu's "prototype" group): each plays one scenario, whatever the stage. */
 const scenarios: Record<string, () => Step[]> = {
 	"ask-permission": () => askPermission,
+	// Clarifying questions before the blueprint, one at a time; the answers then draft it.
+	"clarification-questions": () => clarify,
 	// The first build: status and live feed, code streaming in, files processed, a version and what's next.
 	"code-generation": () => build(false),
 };
@@ -883,7 +947,7 @@ function stepsFor(request: ArchieRequest, memory: Memory = {}): Step[] {
 			return reaskAnswer(pending.index, true);
 		}
 		memory.pendingAnswers = undefined;
-		return draftBlueprint;
+		return draftBlueprint("answers");
 	}
 
 	if (text.startsWith(answersIntro)) {
@@ -896,7 +960,7 @@ function stepsFor(request: ArchieRequest, memory: Memory = {}): Step[] {
 			memory.pendingAnswers = { answers, index };
 			return reaskAnswer(index, false);
 		}
-		return draftBlueprint;
+		return draftBlueprint("answers");
 	}
 
 	// Seeded threads replay without a stage: everything they reach already exists.

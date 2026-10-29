@@ -25,6 +25,8 @@ export {
   staggerContainerVariants,
   iconSwapVariants,
   iconSwapReducedVariants,
+  iconInVariants,
+  drawVariants,
   pendingIconVariants,
   pendingIconReducedVariants,
   pendingSurfaceVariants,

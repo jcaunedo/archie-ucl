@@ -32,7 +32,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 | Job | In Archie | Example |
 | --- | --- | --- |
 | Answer questions | Explains a concept or the project | "What's a database relationship?" |
-| Ask for missing context | Clarifying questions before the blueprint | "Where do you ship?" |
+| Ask for missing context | Clarifying questions before the blueprint (the "Clarification questions" preview interaction; by default Archie drafts the blueprint and says what it assumed) | "Where do you ship?" |
 | Clarify unclear input | Asks what the person meant instead of guessing | "make it better" → "Which part do you want to improve?" |
 | Extract information | Turns the prompt and answers into a blueprint | User types, modules, services, integrations in Plan |
 | Suggest actions | Next steps after a reply | "Add a wishlist", "Connect Stripe" |
@@ -49,7 +49,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 | The message is unclear | Says plainly that it isn't sure what the person means, without blaming them. Offers the likely meanings as options, and typing it another way. Never builds or changes anything from an unclear message | Level 1 |
 | How to refine the blueprint ("how do I update my user types?", "refine my specs") | Answers in detail: where that part lives in Plan, how to edit it there (open an item's details, + to add, × to remove, the sparkle to redraft) or here in the chat, then the order to review the blueprint in before generating (description, user types, modules, core services, integrations), and suggests a prototype first. Ends with what's next | Level 1 |
 | A question it can answer | Answers directly. "Thinking…" only if the answer doesn't start at once, then streams | Level 1 |
-| The request leaves decisions open | Asks clarifying questions, one at a time, each with options and "You decide". When the person chooses "You decide", Archie picks a sensible default and says which | Level 2 |
+| The request leaves decisions open | Drafts the blueprint straight away (the default, as in production), choosing a common setup for what's open and saying which, so the person can change it in Plan or the chat. The "Clarification questions" preview interaction asks first instead: one question at a time, each with options and "You decide". When the person chooses "You decide", Archie picks a sensible default and says which | Level 2 |
 | It has enough to plan | Drafts the blueprint, filling Plan section by section, then summarizes it | Level 2 |
 | An action that builds or changes the app | Proposes it and waits: the person chooses a CTA or asks for a change. Never builds from a question alone | Level 3, approval |
 | It's building | Shows one live status, the files as they're written, then the result as a version | Level 3 |
@@ -78,10 +78,10 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 | Person message | The person's prompt | Default `1756:34088` | — | `ChatMessage` (UCL) |
 | Archie text | Archie's reply: paragraphs, bold headings, lists. A list of facts leads each item with its label in bold and a colon ("**7 modules:** Storefront, Catalog…"), the same format on every line, so it scans. Spacing (decision 2026-10-29): 16px between paragraphs and lists, but a bold heading sits 8px above what it introduces, so it reads as that content's title | Streaming `3581:16771`, Resolved `3581:16933` | Streaming | New part |
 | Activity indicator | Archie's live status | Thought sheet `1971:15347` "Thinking" | Chain of Thought | `ActivityIndicator` (UCL) |
-| Activity feed | What Archie is doing under its status, live: the latest 2 steps, the newest sliding up at the bottom | Thinking - How the system is working `1872:27093` | Chain of Thought, Streaming | New part |
+| Activity feed | What Archie is doing under its status, live: the latest 5 steps, the newest sliding up at the bottom | Thinking - How the system is working `1872:27093` | Chain of Thought, Streaming | New part |
 | Thought disclosure | "Thought for 12s ›", expands to what Archie did | Thought sheet "Thought", "Thought Expanded" | Chain of Thought, Progressive Disclosure | New part |
 | Clarification prompt | One question at a time: options A–D, "You decide", answered by click or by typing. Also used for an unclear message: the likely meanings as options | `3660:104046` (questions) | Human in the Loop | New part |
-| Progress line | A long step: "Creating project blueprint…" → "Blueprint generated · 1m 23s" | Blue print generation `2186:15254`, Result `2186:15400` | Tool Use | New part |
+| Progress line | A long step: "Connecting Stripe…" → "Stripe connected · 2s". Not used for the blueprint: Plan fills under the feed's last step, "Generating blueprint" (decision 2026-10-29) | Blue print generation `2186:15254`, Result `2186:15400` | Tool Use | New part |
 | Approval prompt | Asks permission before a consequential change (removing part of the app): Deny / Allow, then the decision | archie.ds prompt-alert `51:6098` | Human in the Loop | `PromptAlert` (UCL) |
 | What's next | Archie's next steps after an update: rows with what each produces, the recommended one first | Replaces the CTAs and follow-up chips (Result `2186:15400`, Suggested Follow-up Actions `2129:14006`); not in Figma yet | Suggest / Confirm / Execute, Follow-up Chips | New part |
 | Files processed | Files written: live count, then "56 files processed · View in Code"; expands to the list with New/Modified, time and credits | Thought sheet "File 1", "Files", "Files Expanded"; File Process Expanded `1984:11642` | Tool Use, Cost Transparency | New part |
@@ -105,7 +105,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 | Thought disclosure | — | — | — | "Thought for 8s ›", collapsed; expands to its steps | — | — |
 | Archie text | — | Words appear as they arrive | — | Full text, response actions below | "Stopped." after a partial reply | — |
 | Clarification prompt | — | — | "Question 2 of 4", lettered options with "You decide" last; answered questions above it, each with an edit icon in its bubble. Unclear message: "Which part do you want to improve?", likely meanings as options | "4 questions answered"; for an unclear message, the chosen meaning sent as the person's message | — | Earlier answers locked |
-| Progress line | Spinner, "Creating project blueprint…" | — | — | Check, "Blueprint generated · 9s" | Cross, "Couldn't connect Stripe" | — |
+| Progress line | Spinner, "Connecting Stripe…" | — | — | Check, "Stripe connected · 2s" | Cross, "Couldn't connect Stripe" | — |
 | Confirmation (CTAs) | — | — | Both actions available | The chosen one marked | — | The rest disabled after a choice |
 | Files processed | "12 files processed", growing | Current file named | — | "56 files processed · View in Code" | Count of what finished | — |
 | Code stream | Spinner, "Writing: path" | Code appears line by line, in the theme's syntax colors: tags `success`; keywords and attributes `info`; CSS variables `emphasis`; strings `brand`; functions, numbers and braces `warning`; punctuation `muted-foreground`; comments `foreground-subtle`. They follow dark mode | — | Collapses into files processed | — | — |
@@ -119,7 +119,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 
 ## 6. Behavior rules
 
-1. **One live status.** One activity indicator per turn, replaced in place; it never piles up (progress PRD FR-02). After it, how long Archie has been working on the turn, ticking each second ("· 12s", "· 1m 05s"). Every duration Archie shows uses that format: "Thought for 1m 05s", "Blueprint generated · 7s", "Worked for 26s".
+1. **One live status.** One activity indicator per turn, replaced in place; it never piles up (progress PRD FR-02). After it, how long Archie has been working on the turn, ticking each second ("· 12s", "· 1m 5s"). Every duration Archie shows uses that format: "Thought for 1m 5s", "Stripe connected · 2s", "Worked for 26s".
 2. **Thinking collapses.** When text starts, the status becomes "Thought for Ns" with the real elapsed time. Times shown are always measured, never scripted (progress PRD §4.6).
 3. **Questions before the blueprint.** For a new app, Archie asks up to four questions, one at a time. Each has options, "You decide" (Archie picks a default) and a free answer (typed in the composer). Typing just an option's letter ("b", "B.", "b)") picks that option, the same as clicking it; a letter past the last option stays a typed answer. When the last is answered, the answers go as one person message, and Archie drafts the blueprint. Answers can be changed at any point (rule 13).
 4. **Unclear input gets a question, not a guess.** Archie asks when a message is:
@@ -146,7 +146,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
     - **What a change clears:** only the answers that depend on the changed one. A question can depend on earlier ones (`dependsOn`); changing one of those asks it again, and so on down the chain. Answers that don't depend on it stay, and so does the question that was active. In the road bike store, "Where do you ship?" depends on the seller question (in a marketplace each seller ships) and "Save the rider's bike?" depends on accounts (saving a bike needs an account).
     - **The active area stays in view:** after each answer or change, the chat scrolls smoothly to the question that's now active (or jumps, under reduced motion). Scrolling yourself stops it.
     - **Once sent:** the answers bubble lists the answers and expands ("Show questions") to put each question above its answer, so the answers keep their context. ⚠️ **Decision needed:** editing sent answers ("Edit", then Update answers and a redrafted blueprint) was built and removed on 2026-10-29, for now; answers are changed while answering. Revisit it with the blueprint editing in Plan.
-14. **Show the work as it happens.** While Archie thinks or builds, a live feed under its status lists what it's doing: each step it starts or finishes, in plain words ("Compared it with common e-commerce setups", "Grouped the features into 7 modules"). It shows the latest 2 steps (never more): each new step slides up into place at the bottom and the older one slides out at the top. Finished steps have a check; the newest, still in progress, has the bouncing ball. The feed keeps going when the status changes, and becomes the steps of "Thought for Ns" when the thinking ends, so nothing piles up in the conversation (progress PRD FR-02, Rule 3: decision 2026-10-29, the feed is transient). Steps are real activity, never filler (progress PRD §4.6). The feed is hidden from screen readers: the status is the live region, and the steps are in "Thought for Ns" afterwards.
+14. **Show the work as it happens.** While Archie thinks or builds, a live feed under its status lists what it's doing: each step it starts or finishes, in plain words ("Compared it with common e-commerce setups", "Grouped the features into 7 modules"). It shows the latest 5 steps (never more; decision 2026-10-29, up from 2): each new step slides up into place at the bottom and the oldest slides out at the top. Finished steps have a check, drawn on as the step finishes; the newest, still in progress, has the bouncing ball. The feed keeps going when the status changes, and becomes the steps of "Thought for Ns" when the thinking ends, so nothing piles up in the conversation (progress PRD FR-02, Rule 3: decision 2026-10-29, the feed is transient). Steps are real activity, never filler (progress PRD §4.6). The feed is hidden from screen readers: the status is the live region, and the steps are in "Thought for Ns" afterwards.
 
 ## 7. Simulated conversation: road bike store
 
@@ -154,8 +154,8 @@ The sample responder plays these turns. Statuses follow the progress PRD's FR-03
 
 | # | Person | Archie |
 | --- | --- | --- |
-| 1 | "Create an e-commerce store selling high-end accessories for road bikes." | Understanding your request… → Analyzing the requirements… → "Thought for 4s". Asks 4 clarifying questions, one at a time |
-| 2 | Answers (or "You decide") | Working through the details… → "Thought for 3s". Text, then "Creating project blueprint…" while Plan fills in → "Blueprint generated · 7s". Blueprint overview, then the two CTAs |
+| 1 | "Create an e-commerce store selling high-end accessories for road bikes." | Understanding your request… → Working through the details…, with 12 steps in the feed, each for an uneven, random time (about 0.5s to 2s, different every time), so the thinking lasts 12s; the last, "Generating blueprint", fills Plan section by section (4.5s) ("Understanding your business context", "Defining the system description and type", "Defining user types and access levels", "Identifying services and integrations", "Choosing payment, shipping and email providers", "Structuring core modules", "Defining each module's capabilities", "Deciding who reaches what", "Mapping user types to modules", "Planning the data each module needs", "Checking the blueprint for gaps", "Generating blueprint") → "Thought for 12s". Text, then the blueprint overview, with the setup it chose for what the prompt left open. No "What's next" card: the overview ends the turn (decision 2026-10-29) |
+| 2 | `/clarification-questions` (Preview interactions), instead of turn 1 | Understanding your request… → Analyzing the requirements… → "Thought for 4s". Asks 4 clarifying questions, one at a time. The answers (or "You decide") then draft the blueprint as in turn 1, without the chosen-setup note, and end on "What's next": review each section, Generate Prototype or Generate Full Stack Application |
 | 3 | "Generate Prototype" | Preparing your application structure… Writes files (live count, code stream), "56 files processed · View in Code", Version 1 card, follow-ups |
 | 4 | "Change the accent color to green" | "Thought for 2s". "I'll update the color scheme…", code stream of `theme.css`, "4 files processed", Version 2 card |
 | 5 | Restore Version 1 | System note, then a new current version |
@@ -164,7 +164,7 @@ The sample responder plays these turns. Statuses follow the progress PRD's FR-03
 | 8 | "asdf qwer" | A playful reply that asks again, different each time ("I tried every gear and couldn't get that one moving. Tell me what you have in mind?"). No options |
 | 9 | "make it better" | "I can improve a few things. Which one do you mean?" with options: The visual design, Product pages, Checkout |
 | 10 | "remove the cart" | "Do you want to remove the cart icon from the header, or remove the cart and checkout entirely?" with both as options. Choosing to remove both brings an approval prompt ("Ask permission", Deny / Allow) |
-| 11 | A clarifying answer typed as "sdkfj" | After the last answer: "Thanks. I couldn't read your answer to question 2, so I've kept the others." and that question again with its options. A clear answer, then the blueprint |
+| 11 | In the clarification questions flow, an answer typed as "sdkfj" | After the last answer: "Thanks. I couldn't read your answer to question 2, so I've kept the others." and that question again with its options. A clear answer, then the blueprint |
 
 ℹ️ A clear message the script doesn't recognize gets the "What would you like to do?" question with options, not a canned "I can't do that", so the sample behaves like the real rule.
 

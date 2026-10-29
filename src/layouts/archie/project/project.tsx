@@ -28,7 +28,7 @@ import {
 import { Topbar, TopbarCenter, TopbarEnd, TopbarStart } from "@/components/navigation/topbar";
 import { TooltipProvider } from "@/components/overlays/tooltip";
 import { Typography } from "@/components/typography";
-import { fadeVariants, revealVariants, slideUpVariants, useMotionPreference } from "@/lib/motion";
+import { fadeVariants, revealVariants, scrollIntoViewSmoothly, slideUpVariants, useMotionPreference } from "@/lib/motion";
 
 import {
 	answerQuestion,
@@ -110,6 +110,7 @@ const commands = [
 	// Prototype shortcuts first, under "Preview interactions": each plays one scenario of the chat, at any point in the
 	// conversation. A divider separates them from Archie's commands.
 	{ name: "ask-permission", group: "prototype", send: true },
+	{ name: "clarification-questions", group: "prototype", send: true },
 	{ name: "code-generation", group: "prototype", send: true },
 	// Placeholders until Archie's command set is defined (prds/chat-behavior-system.md rule 12).
 	{ name: "command-1" },
@@ -119,8 +120,16 @@ const commands = [
 /** What the person's bubble says for each prototype shortcut, instead of the command itself. */
 const shortcutBubbles: Record<string, string> = {
 	"/ask-permission": "Show ask permission interaction",
+	"/clarification-questions": "Show clarification questions interaction",
 	"/code-generation": "Show code generation interaction",
 };
+
+/** How many "What's next" cards the thread holds, so a new one can be told apart from a re-render. */
+const actionsCount = (thread: ThreadItem[]) =>
+	thread.reduce(
+		(count, item) => count + (item.kind === "archie" ? item.blocks.filter((block) => block.kind === "actions").length : 0),
+		0,
+	);
 
 /** Ways to start an empty chat (Prompt Starters): one to build, two to learn. */
 const starters = [
@@ -229,14 +238,26 @@ function ArchieTurnView({
 
 	return (
 		<div data-slot='archie-turn' className='flex flex-col gap-4'>
-			{turn.blocks.map((block) => {
-				const content = render(block);
-				return content ? (
-					<motion.div key={block.id} variants={revealVariants} initial={enter} animate='animate'>
-						{content}
-					</motion.div>
-				) : null;
-			})}
+			{/* Blocks already there when the turn first shows (a thread opened later) skip every entrance inside them, the
+			    Loader's grow included; blocks that arrive afterwards play theirs. */}
+			<AnimatePresence initial={false}>
+				{turn.blocks.map((block) => {
+					const content = render(block);
+					return content ? (
+						// "Thought for Ns" takes the status line's place as it is, so the A growing in is the motion you see. Its text
+						// ends 1px above its 20px row, so the block after it comes up 1px: 16px from that text to the next line.
+						<motion.div
+							key={block.id}
+							variants={revealVariants}
+							initial={block.kind === "thought" ? false : enter}
+							animate='animate'
+							className={block.kind === "thought" ? "-mb-px" : undefined}
+						>
+							{content}
+						</motion.div>
+					) : null;
+				})}
+			</AnimatePresence>
 			{turn.status && (
 				<div className='flex flex-col gap-2'>
 					<div className='flex min-w-0 items-center gap-1.5'>
@@ -398,14 +419,34 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 		return () => stopAnswering.current?.();
 	}, []);
 
-	// Follow the thread as it grows, unless the person has scrolled up to read.
+	// Follow the thread as it grows, unless the person has scrolled up to read. Streamed text follows at once; a "What's
+	// next" card that arrives glides into view (scrollTransition), and the thread waits for the glide before following
+	// again. Any wheel, touch, click or key stops the glide.
 	const body = useRef<HTMLDivElement>(null);
 	const pinnedToEnd = useRef(true);
+	const glide = useRef<(() => void) | null>(null);
+	const nextStepsShown = useRef(actionsCount(data.thread));
 	useLayoutEffect(() => {
-		if (body.current && pinnedToEnd.current) {
+		const count = actionsCount(thread);
+		const arrived = count > nextStepsShown.current;
+		nextStepsShown.current = count;
+		if (!body.current || !pinnedToEnd.current) {
+			return;
+		}
+		const card = arrived ? [...body.current.querySelectorAll<HTMLElement>("[data-slot='next-steps']")].at(-1) : undefined;
+		if (card) {
+			glide.current?.();
+			glide.current = scrollIntoViewSmoothly(card, {
+				reducedMotion: Boolean(prefersReducedMotion),
+				onEnd: () => {
+					glide.current = null;
+				},
+			});
+		} else if (!glide.current) {
 			body.current.scrollTop = body.current.scrollHeight;
 		}
 	}, [thread, queue, waiting]);
+	useEffect(() => () => glide.current?.(), []);
 
 	/** The person's message before a turn: what Retry sends again. */
 	function messageBefore(turnId: string) {
@@ -466,6 +507,10 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 							ref={body}
 							aria-busy={answering || undefined}
 							onScroll={(event) => {
+								// The glide's own scrolling isn't the person scrolling away.
+								if (glide.current) {
+									return;
+								}
 								const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
 								pinnedToEnd.current = scrollHeight - scrollTop - clientHeight < 24;
 							}}

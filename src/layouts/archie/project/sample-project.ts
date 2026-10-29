@@ -42,6 +42,10 @@ function conversation() {
 		ask(text: string) {
 			return history.person(text).archie({ kind: "message", text });
 		},
+		/** The person's request, answered with clarifying questions (the /clarification-questions flow) instead of a blueprint. */
+		askWithQuestions(text: string) {
+			return history.person(text).archie({ kind: "message", text: "/clarification-questions" });
+		},
 		/** Answers the open questions with the blueprint's answers, then sends them as one message (rule 3). */
 		answerQuestions() {
 			const turn = thread.at(-1);
@@ -90,16 +94,19 @@ const sampleProject: ProjectData = {
 	blueprint,
 };
 
-/** Archie has asked its clarifying questions; the first one is waiting for an answer. */
+/** The clarification questions flow: Archie has asked its questions; the first one is waiting for an answer. */
 const sampleProjectWithReply: ProjectData = {
 	...sampleProject,
-	thread: conversation().ask(prompt).thread,
+	thread: conversation().askWithQuestions(prompt).thread,
 };
 
-/** The blueprint is drafted and Plan is full; Archie waits for "Generate Prototype" or "Generate Full Stack Application". */
+/**
+ * The clarification questions flow, answered: the blueprint is drafted and Plan is full; Archie's "What's next" waits
+ * for a section to review, "Generate Prototype" or "Generate Full Stack Application" (the default flow has no card).
+ */
 const sampleBlueprintReady: ProjectData = {
 	...sampleProject,
-	thread: conversation().ask(prompt).answerQuestions().thread,
+	thread: conversation().askWithQuestions(prompt).answerQuestions().thread,
 	planRevealed: 5,
 };
 
@@ -109,7 +116,6 @@ const sampleVersionHistory: ProjectData = {
 	credits: 351,
 	thread: conversation()
 		.ask(prompt)
-		.answerQuestions()
 		.choose("Generate Prototype")
 		.separator("2 days ago")
 		.ask("Change the accent color to green").thread,
