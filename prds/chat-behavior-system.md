@@ -108,7 +108,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 | Progress line | Spinner, "Creating project blueprint…" | — | — | Check, "Blueprint generated · 9s" | Cross, "Couldn't connect Stripe" | — |
 | Confirmation (CTAs) | — | — | Both actions available | The chosen one marked | — | The rest disabled after a choice |
 | Files processed | "12 files processed", growing | Current file named | — | "56 files processed · View in Code" | Count of what finished | — |
-| Code stream | Spinner, "Writing: path" | Code appears line by line | — | Collapses into files processed | — | — |
+| Code stream | Spinner, "Writing: path" | Code appears line by line, in the theme's syntax colors: tags `success`; keywords and attributes `info`; CSS variables `emphasis`; strings `brand`; functions, numbers and braces `warning`; punctuation `muted-foreground`; comments `foreground-subtle`. They follow dark mode | — | Collapses into files processed | — | — |
 | Version card | — | — | — | Green check, "Current Version" | — | Older: "Version 1", Restore available |
 | Error card | — | — | Retry | — | Title, what's unchanged, Retry | Retry disabled once retried |
 | Queue | — | — | — | Item leaves when sent | — | Removable until sent |

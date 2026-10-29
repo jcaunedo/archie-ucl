@@ -719,7 +719,66 @@ function ApprovalRecord({ block, waiting }: { block: Block<"approval">; waiting:
 	);
 }
 
-/** The file streaming in: "Writing: path", the newest lines kept in view. */
+/**
+ * Code colors, from the theme's tones so they follow light and dark mode (decision 2026-10-29): tags `success`,
+ * attributes, properties and keywords `info`, CSS variables `emphasis`, strings `brand` (the theme has no magenta),
+ * numbers and braces `warning`, punctuation `muted-foreground`, comments `foreground-subtle`.
+ */
+const codeColors = {
+	comment: "text-foreground-subtle",
+	string: "text-brand",
+	tag: "text-success",
+	variable: "text-emphasis",
+	keyword: "text-info",
+	attribute: "text-info",
+	call: "text-warning",
+	number: "text-warning",
+	brace: "text-warning",
+	punctuation: "text-muted-foreground",
+} as const;
+
+// One pattern for the languages Archie writes (TSX, CSS, HTML), group by group in `codeColors` order.
+const codeToken = new RegExp(
+	[
+		String.raw`(\/\/[^\n]*|\/\*[\s\S]*?\*\/)`,
+		String.raw`("(?:[^"\\\n]|\\.)*"?|'(?:[^'\\\n]|\\.)*'?|\x60(?:[^\x60\\]|\\.)*\x60?)`,
+		String.raw`(<\/?[A-Za-z!][\w.:-]*)`,
+		String.raw`(--[\w-]+)`,
+		String.raw`\b(import|from|export|const|let|function|return|if|else|true|false|null|new|async|await|type)\b`,
+		String.raw`([A-Za-z_][\w-]*)(?==|:\s)`,
+		String.raw`([A-Za-z_][\w-]*)(?=\()`,
+		String.raw`\b(\d+(?:\.\d+)?(?:%|px|rem)?)\b`,
+		String.raw`([{}()[\]])`,
+		String.raw`([<>/=:;,.*])`,
+	].join("|"),
+	"g",
+);
+
+/** Code with the theme's syntax colors. Tolerates partial code (an unclosed string) as it streams in. */
+function highlight(code: string) {
+	const kinds = Object.keys(codeColors) as (keyof typeof codeColors)[];
+	const out: ReactNode[] = [];
+	let last = 0;
+	for (const match of code.matchAll(codeToken)) {
+		const index = match.index ?? 0;
+		if (index > last) {
+			out.push(code.slice(last, index));
+		}
+		const group = match.slice(1).findIndex((value) => value !== undefined);
+		out.push(
+			<span key={index} className={codeColors[kinds[group]]}>
+				{match[0]}
+			</span>,
+		);
+		last = index + match[0].length;
+	}
+	if (last < code.length) {
+		out.push(code.slice(last));
+	}
+	return out;
+}
+
+/** The file streaming in: "Writing: path", the newest lines kept in view, in the theme's code colors. */
 function CodeStream({ path, code }: { path: string; code: string }) {
 	const body = useRef<HTMLPreElement>(null);
 	useEffect(() => {
@@ -740,7 +799,7 @@ function CodeStream({ path, code }: { path: string; code: string }) {
 				<StepIcon state='running' />
 			</div>
 			<pre ref={body} className='max-h-36 overflow-hidden px-3 py-2 font-mono text-xs leading-5 text-foreground'>
-				{code}
+				{highlight(code)}
 			</pre>
 		</div>
 	);
@@ -829,7 +888,7 @@ function VersionCard({ block, onRestore }: { block: Block<"version">; onRestore:
 				<IconAction label='Not helpful' pressed={rating === "down"} onClick={() => toggle("down")}>
 					<ThumbsDown />
 				</IconAction>
-				<IconAction label={saved ? "Saved" : "Save version"} pressed={saved} onClick={() => setSaved((current) => !current)}>
+				<IconAction label="Bookmark" pressed={saved} onClick={() => setSaved((current) => !current)}>
 					<Bookmark />
 				</IconAction>
 			</div>
