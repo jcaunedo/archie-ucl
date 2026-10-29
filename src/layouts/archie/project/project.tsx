@@ -52,6 +52,7 @@ import {
 	type BlueprintSection,
 	type ClarifyingQuestion,
 	type NextStep,
+	type PersonMessage,
 	type ThreadItem,
 } from "./chat-model";
 import {
@@ -64,6 +65,7 @@ import {
 	ElapsedTime,
 	ErrorCard,
 	FilesProcessed,
+	MessageActions,
 	NextSteps,
 	Note,
 	ProgressLine,
@@ -360,7 +362,8 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 			return;
 		}
 		// A prototype shortcut shows as what it does ("Show ask permission interaction"); Archie still gets the command.
-		setThread((current) => [...current, person(shortcutBubbles[text.trim()] ?? text)]);
+		const shortcut = shortcutBubbles[text.trim()];
+		setThread((current) => [...current, shortcut ? person(shortcut, undefined, text) : person(text)]);
 		request({ kind: "message", text });
 	}
 
@@ -385,6 +388,18 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 		const message = answersText(intro, answers);
 		setThread((current) => [...current, person(message, { questions, values: answers })]);
 		request({ kind: "message", text: message });
+	}
+
+	/**
+	 * Retry on the person's message: sends it again as it was sent. A set of answers goes again as a set (or, while
+	 * Archie works, queues as text); a prototype shortcut sends its command again, not its bubble.
+	 */
+	function resend(item: PersonMessage) {
+		if (item.answers && !answering) {
+			sendAnswers(item.text.split("\n")[0], item.answers.questions, item.answers.values);
+			return;
+		}
+		send(item.sent ?? item.text);
 	}
 
 	/** Stop keeps what's done (rule 8). Queued messages then go. */
@@ -604,23 +619,26 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 						>
 							{thread.length === 0 && <PromptStarters items={starters} onPick={send} />}
 							{thread.map((item, index) => {
-								if (item.kind === "person" && item.answers) {
-									const { questions, values } = item.answers;
+								if (item.kind === "person") {
+									// The bubble, with Copy and Retry 4px below it on the right, shown on hover or keyboard focus. Their
+									// row keeps its place while hidden, so nothing moves when they show.
 									return (
-										<AnswersMessage
+										<div
 											key={item.id}
 											data-thread-item={item.id}
-											intro={item.text.split("\n")[0]}
-											questions={questions}
-											answers={values}
-										/>
-									);
-								}
-								if (item.kind === "person") {
-									return (
-										<ChatMessage key={item.id} data-thread-item={item.id}>
-											{item.text}
-										</ChatMessage>
+											className='group/message flex flex-col items-end gap-1'
+										>
+											{item.answers ? (
+												<AnswersMessage
+													intro={item.text.split("\n")[0]}
+													questions={item.answers.questions}
+													answers={item.answers.values}
+												/>
+											) : (
+												<ChatMessage>{item.text}</ChatMessage>
+											)}
+											<MessageActions text={item.text} onRetry={() => resend(item)} />
+										</div>
 									);
 								}
 								if (item.kind === "separator") {

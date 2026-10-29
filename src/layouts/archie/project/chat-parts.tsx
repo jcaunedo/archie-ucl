@@ -964,22 +964,46 @@ function VersionCard({ block, onRestore }: { block: Block<"version">; onRestore:
 }
 
 /** Under a finished reply: copy, helpful / not helpful, and retry (Feedback Loops). */
+/** Copies text to the clipboard. `copied` stays true for 1.5s after, so the button can say "Copied". */
+function useCopy(text: string) {
+	const [copied, setCopied] = useState(false);
+	const copy = () => {
+		void navigator.clipboard?.writeText(text);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	};
+	return { copied, copy };
+}
+
+/**
+ * Copy and Retry for the person's message, below its bubble on the right. They show while the message is hovered
+ * (`group/message` on its row) or when one of them has keyboard focus, and keep their place while hidden. Retry sends
+ * the message again.
+ */
+function MessageActions({ text, onRetry }: { text: string; onRetry: () => void }) {
+	const { copied, copy } = useCopy(text);
+
+	return (
+		<div className='flex shrink-0 items-center opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100'>
+			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy}>
+				{copied ? <Check /> : <Copy />}
+			</IconAction>
+			<IconAction label='Retry' onClick={onRetry}>
+				<RotateCcw />
+			</IconAction>
+		</div>
+	);
+}
+
 function ResponseActions({ text, onRetry }: { text: string; onRetry?: () => void }) {
 	const { rating, toggle } = useFeedback();
-	const [copied, setCopied] = useState(false);
+	const { copied, copy } = useCopy(text);
 
 	return (
 		// Close under the reply: 4px after it instead of the turn's 16px gap; with the buttons' own 4px, the icons sit 8px
 		// below the text.
 		<div className='-mt-3 flex items-center'>
-			<IconAction
-				label={copied ? "Copied" : "Copy"}
-				onClick={() => {
-					void navigator.clipboard?.writeText(text);
-					setCopied(true);
-					setTimeout(() => setCopied(false), 1500);
-				}}
-			>
+			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy}>
 				{copied ? <Check /> : <Copy />}
 			</IconAction>
 			<IconAction label='Helpful' pressed={rating === "up"} onClick={() => toggle("up")}>
@@ -1101,6 +1125,7 @@ export {
 	PromptStarters,
 	QuestionsCard,
 	QueueList,
+	MessageActions,
 	ResponseActions,
 	ThoughtDisclosure,
 	VersionCard,

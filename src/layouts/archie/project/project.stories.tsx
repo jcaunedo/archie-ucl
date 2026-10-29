@@ -407,6 +407,37 @@ export const MessageToTop: Story = {
 };
 
 /**
+ * The person's message has Copy and Retry below it, shown on hover or keyboard focus.
+ * Test: the actions sit below the bubble, hidden until focused; Retry sends the same message again, and Archie answers
+ * it again.
+ */
+export const RetryMessage: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const question = "What's a database relationship?";
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), `${question}{Enter}`);
+		await archieFinished(canvas);
+		const row = canvas.getAllByText(question).at(-1)!.closest<HTMLElement>("[data-thread-item]")!;
+		const retry = within(row).getByRole("button", { name: "Retry" });
+		const actions = retry.parentElement!;
+		// Below the bubble, hidden until hover or keyboard focus (the test's hover is synthetic, so it checks focus).
+		await expect(actions.getBoundingClientRect().top).toBeGreaterThan(row.firstElementChild!.getBoundingClientRect().bottom);
+		await expect(getComputedStyle(actions).opacity).toBe("0");
+		retry.focus();
+		await waitFor(() => expect(getComputedStyle(actions).opacity).toBe("1"));
+		await expect(within(row).getByRole("button", { name: "Copy" })).toBeInTheDocument();
+
+		await userEvent.click(within(row).getByRole("button", { name: "Retry" }));
+		await archieFinished(canvas);
+		await expect(canvas.getAllByText(question)).toHaveLength(2);
+		await expect(canvas.getAllByText("That's a one-to-many relationship.", { exact: false })).toHaveLength(2);
+	},
+};
+
+/**
  * A question about one part of the blueprint gets its details, from the blueprint itself (rule 4: nothing invented).
  * Test: "give me the details of the Storefront" answers with its description, what it does and who it's for, in plain
  * text with no options.

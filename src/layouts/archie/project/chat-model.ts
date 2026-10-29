@@ -103,7 +103,11 @@ type ArchieTurn = {
 /** Answers sent together after clarifying questions: kept with the message, so they can be edited and sent again. */
 type SentAnswers = { questions: ClarifyingQuestion[]; values: string[] };
 
-type PersonMessage = { kind: "person"; id: string; text: string; answers?: SentAnswers };
+/**
+ * A message the person sent. `sent` is what went to Archie when the bubble shows something else (a prototype shortcut
+ * shows "Show ask permission interaction" but sends "/ask-permission"), so Retry sends the same thing again.
+ */
+type PersonMessage = { kind: "person"; id: string; text: string; answers?: SentAnswers; sent?: string };
 
 /** A day separator ("2 days ago") between parts of a long thread. */
 type Separator = { kind: "separator"; id: string; label: string };
@@ -499,11 +503,12 @@ function currentVersion(thread: ThreadItem[]) {
 	return 0;
 }
 
-const person = (text: string, answers?: SentAnswers): PersonMessage => ({
+const person = (text: string, answers?: SentAnswers, sent?: string): PersonMessage => ({
 	kind: "person",
 	id: newId("person"),
 	text,
 	answers,
+	sent,
 });
 
 export {
