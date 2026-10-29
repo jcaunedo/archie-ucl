@@ -1,7 +1,7 @@
 <!--
 Created: Oct 15, 2026
 Created by: Julio Caunedo
-Last updated: Oct 15, 2026
+Last updated: Oct 28, 2026
 Scope: Progress, reasoning and execution feedback in the AI chat, plus the UCL components that render it (activity indicator, activity disclosure, execution progress, completion summary).
 Purpose: Replace the audit-log presentation of AI activity with a conversational, progressively disclosed experience grounded in real system events.
 -->
@@ -1001,12 +1001,13 @@ The implementation should reuse the existing Archie design system and chat infra
 
 ### UCL notes
 
-- ⚠️ **Gap:** none of Components A–D exist in UCL yet (only Button). Each needs a Figma source first. `archie.ds` has no components yet, so these would come from `archielabs.ds` or wait for `archie.ds` (see CLAUDE.md → "Figma").
-- ⚠️ **Decision needed:** category. Indicator, execution progress and completion summary fit `feedback`. The disclosure could sit in `feedback` or `data-display`.
+- ✅ **Resolved:** Component A exists as `ActivityIndicator` (`feedback/activity-indicator`), from the "Thought" row in `archie.ds` → "chat-composer". Only its Active state is in Figma; Default, Completed and Failed still need a design.
+- ⚠️ **Gap:** Components B–D don't exist in UCL yet. Each needs a Figma source first.
+- ⚠️ **Decision needed:** category for the rest. The indicator is in `feedback`; execution progress and completion summary fit there too. The disclosure could sit in `feedback` or `data-display`.
 - ⚠️ **Gap:** DESIGN.md → "Brand voice" isn't defined yet. Once it is, record the FR-03 status vocabulary there so `ucl-ux-copywriter` and the components use the same words (e.g. "application" vs "app").
 - ℹ️ Section 10 "Motion" maps to the existing motion vocabulary, so no new tokens should be needed:
   - Status replacement in place → `iconSwapVariants` / `fadeVariants` crossfade.
-  - Active indicator → Pending (`pendingIconVariants`, subtle opacity pulse per "Loading" guidance).
+  - Active indicator → Pending. Built as a slow highlight sweep on the label (`pendingTextVariants`), from Figma's gradient label, instead of the opacity pulse.
   - Disclosure open/close → Expand (`expandVariants` + `useExpandClip()`).
   - Step completion → Confirm (`confirmPattern`), once per step, never looping.
   - Reduced motion → `useMotionPreference()`; feedback becomes near-instant, not removed.

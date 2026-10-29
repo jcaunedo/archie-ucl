@@ -57,7 +57,7 @@ Use these named patterns before inventing new motion. Gesture patterns live in `
 | Glide    | Directional navigation                 | `slideVariants` (`custom={1 \| -1}`), `glidePattern` |
 | Dismiss  | Content removed or closed              | `dismissVariants`; table/list rows: `rowRemoveVariants` |
 | Confirm  | Lightweight success feedback           | `confirmPattern`                                |
-| Pending  | Work in progress on an element's behalf | `pendingIconVariants`, `pendingSurfaceVariants` |
+| Pending  | Work in progress on an element's behalf | `pendingIconVariants`, `pendingSurfaceVariants`; a status label: `pendingTextVariants` (a slow highlight sweep, `motionDuration.pendingShimmer`) |
 
 Plus `fadeVariants`, `overlayVariants` (scrims), `panelVariants` (drawers) and `iconSwapVariants` (one small element replacing another in place).
 
@@ -78,6 +78,7 @@ Plus `fadeVariants`, `overlayVariants` (scrims), `panelVariants` (drawers) and `
 - Use `AnimatePresence` only for mount/unmount. Its direct children need stable unique keys.
 - Animate `opacity` and `transform` by preference. Avoid continuously animating `top`/`left`/`margin`/`padding`/`box-shadow`.
 - Never animate the same property with CSS and Motion at once.
+- A panel that collapses beside other content (ChatPanel) animates its width with a CSS transition, timed from `src/lib/motion`, so its neighbors follow it. Fade its content out before it narrows and in after it widens, so nothing visibly reflows. DESIGN.md "Chat panel" has the details.
 
 ## Accessibility
 

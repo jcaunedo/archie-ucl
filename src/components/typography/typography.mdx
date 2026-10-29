@@ -52,14 +52,14 @@ Every Figma text style binds its size and line height to the `font-size/*` and `
 
 ## Weights
 
-UCL's weights are lighter than Tailwind's from regular to bold, so each Figma weight maps to a lighter number. `body` uses the regular weight, so all text is 350 at every size unless `weight` (or a `font-*` utility) is set:
+UCL's weights are lighter than Tailwind's from regular to bold, so each Figma weight maps to a lighter number. `body` uses the regular weight, so all text is 380 at every size unless `weight` (or a `font-*` utility) is set:
 
 | `weight` | Utility | UCL | Tailwind | Figma text style |
 | --- | --- | --- | --- | --- |
-| `regular` | `font-normal` | **350** | 400 | `<size>/<size>` |
-| `medium` | `font-medium` | **450** | 500 | `-medium` |
-| `semibold` | `font-semibold` | **550** | 600 | `-semibold` |
-| `bold` | `font-bold` | **650** | 700 | `-bold` |
+| `regular` | `font-normal` | **380** | 400 | `<size>/<size>` |
+| `medium` | `font-medium` | **480** | 500 | `-medium` |
+| `semibold` | `font-semibold` | **580** | 600 | `-semibold` |
+| `bold` | `font-bold` | **680** | 700 | `-bold` |
 | `black` | `font-black` | 900 | 900 | `-black` |
 
 `font-light` is **280** (Tailwind 300). Typography has no `light` weight because Figma has no light text style; use the utility directly when a design calls for it.
@@ -69,7 +69,7 @@ UCL's weights are lighter than Tailwind's from regular to bold, so each Figma we
 The values come from the `--font-weight-*` tokens in `theme.css`, so the `font-*` utilities use the same scale outside Typography. The [Typography foundations page](?path=/docs/foundations-typography--docs) lists every token.
 
 - Use `weight` (or the named `font-*` utilities). Never write `font-[500]` or `font-[700]` to get Tailwind's values back.
-- Geist must load as a variable font (`wght@100..900`). With a fixed list of weights, 280–650 round to the nearest loaded one.
+- Geist must load as a variable font (`wght@100..900`). With a fixed list of weights, 280–680 round to the nearest loaded one.
 - Figma's `semantic` → `font-weight/*` variables match these values in the Archie modes (per mode, so each product can set its own). All 55 text styles bind their weight to them.
 
 ## Headings

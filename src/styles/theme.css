@@ -108,6 +108,13 @@
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
 
+	/* Figma `radius/button/*` (archielabs.ds semantic): `rounded-button-<size>`, one per Button size. */
+	--radius-button-xs: 0.375rem;
+	--radius-button-sm: 0.5rem;
+	--radius-button-md: 0.5rem;
+	--radius-button-lg: 0.5rem;
+	--radius-button-xl: 0.625rem;
+
 	/* Figma effect styles shadow-xs … shadow-2xl. Colors switch per mode. */
 	--shadow-xs: 0 1px 2px 0 var(--shadow-color-sm);
 	--shadow-sm: 0 2px 4px 0 var(--shadow-color-sm);
@@ -115,6 +122,8 @@
 	--shadow-lg: 0 10px 16px 0 var(--shadow-color-sm), 0 3px 8px 0 var(--shadow-color-sm);
 	--shadow-xl: 0 8px 10px -6px var(--shadow-color-md), 0 6px 17px 0 var(--shadow-color-md);
 	--shadow-2xl: 0 16px 50px -12px var(--shadow-color-lg);
+	/* Figma effect style "Shadow Prompt": floating panels such as the chat panel. */
+	--shadow-prompt: 0 6px 12px -2px var(--shadow-color-sm);
 }
 
 /* ---------- Breakpoints ----------
@@ -151,13 +160,13 @@
 	--text-base: 1rem;
 	--text-base--line-height: 1.5rem;
 	/* Weight scale, lighter than Tailwind's from light to bold (DESIGN.md "Font weight scale"). `body` uses the normal
-	   weight (see the base layer at the end of this file), so all text is 350 unless a `font-*` utility is set.
+	   weight (see the base layer at the end of this file), so all text is 380 unless a `font-*` utility is set.
 	   Geist is variable (100–900). extrabold (800) and black (900) keep Tailwind's values. */
 	--font-weight-light: 280;
-	--font-weight-normal: 350;
-	--font-weight-medium: 450;
-	--font-weight-semibold: 550;
-	--font-weight-bold: 650;
+	--font-weight-normal: 380;
+	--font-weight-medium: 480;
+	--font-weight-semibold: 580;
+	--font-weight-bold: 680;
 	--text-lg: 1.125rem;
 	--text-lg--line-height: 1.75rem;
 	--text-xl: 1.25rem;
@@ -507,8 +516,8 @@
 }
 
 /* ---------- Base text weight ----------
-   All text inherits the normal weight (350, `--font-weight-normal`) instead of the browser's 400, so text with no
-   `font-*` utility matches `font-normal` at every size. Shipped to consumers, so the apps' unstyled text is 350 too.
+   All text inherits the normal weight (380, `--font-weight-normal`) instead of the browser's 400, so text with no
+   `font-*` utility matches `font-normal` at every size. Shipped to consumers, so the apps' unstyled text is 380 too.
    See DESIGN.md "Font weight scale". */
 @layer base {
 	body {

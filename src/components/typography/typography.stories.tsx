@@ -6,10 +6,10 @@ const sizes: TypographySize[] = ["xs", "sm", "base", "lg", "xl", "2xl", "3xl", "
 const weights: TypographyWeight[] = ["regular", "medium", "semibold", "bold", "black"];
 /** UCL's value for each `weight` (theme.css `--font-weight-*`), and Tailwind's for comparison. */
 const weightValues: Record<TypographyWeight, [ucl: number, tailwind: number]> = {
-	regular: [350, 400],
-	medium: [450, 500],
-	semibold: [550, 600],
-	bold: [650, 700],
+	regular: [380, 400],
+	medium: [480, 500],
+	semibold: [580, 600],
+	bold: [680, 700],
 	black: [900, 900],
 };
 

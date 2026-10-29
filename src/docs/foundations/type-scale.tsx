@@ -97,7 +97,7 @@ function FontWeights({ css }: { css: string }) {
 					return (
 						<tr key={name}>
 							<td className={`${cell} font-mono`}>font-{name}</td>
-							<td className={`${cell} font-mono ${changed ? "text-foreground" : "text-muted-foreground"}`} style={{ fontWeight: changed ? 650 : undefined }}>
+							<td className={`${cell} font-mono ${changed ? "text-foreground" : "text-muted-foreground"}`} style={{ fontWeight: changed ? 680 : undefined }}>
 								{value}
 							</td>
 							<td className={`${cell} font-mono text-muted-foreground`}>{changed ? tailwind : "same"}</td>

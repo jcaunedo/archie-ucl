@@ -26,6 +26,8 @@ export {
   pendingIconVariants,
   pendingIconReducedVariants,
   pendingSurfaceVariants,
+  pendingTextVariants,
+  pendingSpinnerVariants,
 } from "./variants";
 
 export {

@@ -168,31 +168,53 @@ The rule matches real interactive elements and roles:
 
 - Don't add `antialiased` or these properties to a component. The global rule covers it.
 - `text-rendering: optimizeLegibility` is deliberately not set globally: modern browsers already kern and apply ligatures, and on long pages it can slow rendering. Use it per element only if a specific heading needs it.
-- Apps load Geist as a variable font (`wght@100..900`, as CLAUDE.md "Consumer Integration" and `.storybook/preview-head.html` do), since UCL uses weights from 280 to 650 (DESIGN.md "Font weight scale"). A static weight set would fall back to the nearest loaded weight.
+- Apps load Geist as a variable font (`wght@100..900`, as CLAUDE.md "Consumer Integration" and `.storybook/preview-head.html` do), since UCL uses weights from 280 to 680 (DESIGN.md "Font weight scale"). A static weight set would fall back to the nearest loaded weight.
 - Digits that line up in columns use `tabular-nums` per element. That's a typographic choice, not part of this rule.
 
 ⚠️ **Constraint:** `theme.css` ships to consumers, so every app's text renders this way, including text outside UCL components. `antialiased` makes text look slightly lighter on macOS: compare it with Figma before changing font weights to make up for it.
 
 ---
 
-## Button: pending, focusable disabled and `type="button"` (`src/components/buttons/button/button.tsx`)
+## Button: Figma's Button set, plus pending, focusable disabled and `type="button"` (`src/components/buttons/button/button.tsx`)
 
-**Rule:** Button differs from shadcn's in four ways. A resync from shadcn must keep all of them:
+**Rule:** Button follows Figma's "Button" set (`archie.ds`, node `36:3337`, moved from `archielabs.ds` node `41:604` on 2026-10-28 with the same 210 variants and bindings to the master's `semantic` variables, read in Archie mode) on shadcn's structure, synced 2026-10-28. A resync from Figma or shadcn must keep the mapping and the four behaviors below.
 
-- **`pending`** sets `aria-busy` and `aria-disabled`, keeps the button focusable, ignores clicks, and pulses the content with `pendingSurfaceVariants`. The label doesn't change, so the width doesn't either.
-- **`aria-disabled="true"`** blocks clicks in `handleClick` but keeps focus, hover and the `not-allowed` cursor, so a tooltip can say why the button is unavailable. It works with `asChild` links too: `preventDefault` stops the navigation.
+**Figma → code:**
+
+| Figma | Code |
+| --- | --- |
+| Solid · Brand / Flat · Brand / Outlined · Neutral / Ghost · Neutral / Link · Brand / Solid · Destructive / Flat · Destructive | `variant`: `default` / `secondary` / `outline` / `ghost` / `link` / `destructive` / `destructive-secondary` |
+| Size xs · 24 / sm · 28 / md · 32 / lg · 36 / xl · 40, Type=Text | `size`: `xs` / `sm` / `md` (default) / `lg` / `xl` |
+| The same sizes, Type=Icon | `size`: `icon-xs` … `icon-xl`, with 12 / 14 / 16 / 18 / 20px icons |
+| `radius/button/xs` … `xl` (6 / 8 / 8 / 8 / 10px) | `rounded-button-xs` … `rounded-button-xl`, new tokens |
+| State=Hover on Solid: 20% black over the fill | `hover:not-aria-disabled:bg-[color-mix(in_srgb,var(--primary)_80%,black)]`: sRGB, as Figma composites layers (oklab comes out darker: `#a02d20` instead of Figma's `#ad3326`); not `/90`, which lightens |
+| State=Hover on Flat / Outlined, Ghost / Link | `brand-muted`, `destructive-muted` / `accent` (`states/hover`, black at 3%) / `brand-subtle`, no underline. On Outlined the tint is a gradient layer over the white fill, not a replacement: replaced, the button turns see-through and on the gray topbar hovers to `#e7e9ed` instead of `#f8f8f8` (fixed 2026-10-28). Ghost has no fill, so its tint shows what's behind it, as in Figma |
+| State=Disabled | `data-disabled:` colors per variant: `states/disabled` fill and `foreground/subtle` text, `input/border-disabled` on Outlined. Solid · Brand Type=Text keeps `on-brand` text on `tone/brand/muted`; Type=Icon uses the neutral pair (a compound variant). No `opacity-50` |
+| State=Loading | `pending`: Figma's `loader-circle` at the size's icon size, centered over the label |
+| Outlined's `shadow-xs` | `shadow-xs`, dropped when disabled |
+
+- **Spacing:** each size's padding, gap and icon size come from the Archie-mode values of the bound `spacing/*` variables (md: 12px sides, 8px on the side with an icon, 5px icon to label; see the comments in `buttonVariants`). The side with an icon is tighter only when the icon says which side it's on: `data-icon='inline-start'` or `'inline-end'` on the svg. CSS can't tell a leading icon from a trailing one, and shadcn's `has-[>svg]` narrows both sides.
+- **Labels:** 14px medium (`font-size/sm`, `font-weight/medium`, 480 in code since 2026-10-28), 12px at `xs`, 16px at `xl`.
+
+ℹ️ The xs and sm labels' text isn't bound to variables in Figma (12 and 14px at weight 500). UCL uses `font-medium` (480), like the bound sizes.
+
+**Behaviors (keep on every resync):**
+
+- **`pending`** sets `aria-busy` and `aria-disabled`, keeps the button focusable and ignores clicks. Figma's Loading state replaces the label with the spinner and narrows the button (60 → 54px at md); here the label stays, transparent, under the spinner, so the width doesn't change and the label stays the accessible name (`opacity-0`, not `invisible`, which would drop it from the name). Decision 2026-10-28. The spinner turns once per `motionDuration.pendingLoop` (`pendingSpinnerVariants`) and pulses under reduced motion. A pending button keeps its colors; it doesn't look disabled.
+- **`aria-disabled="true"`** blocks clicks in `handleClick` but keeps focus and the `not-allowed` cursor, so a tooltip can say why the button is unavailable. It looks disabled (`data-disabled`). It works with `asChild` links too: `preventDefault` stops the navigation.
 - **`type` defaults to `"button"`**, so a Button inside a form doesn't submit it. Pass `type="submit"` for the form's submit button.
-- **The content is always wrapped in a `motion.span`** (except with `asChild`). The pulse needs it, and rendering it always keeps the DOM stable when `pending` toggles.
+- **The content is always wrapped in a span** (`data-slot='button-content'`, except with `asChild`), so the DOM and width are stable when `pending` toggles.
 
-**Why:** the critique of 2026-10-20 found that a double click on "Generate" fired twice, a disabled "Continue" couldn't be focused to explain itself (sign-in spec), and a Button in a form submitted it. Archie's AI actions all start from a Button, so it owns the pending state instead of each app building its own.
+**Why:** the critique of 2026-10-20 found that a double click on "Generate" fired twice, a disabled "Continue" couldn't be focused to explain itself (sign-in spec), and a Button in a form submitted it. Archie's AI actions all start from a Button, so it owns the pending state instead of each app building its own. The 2026-10-28 sync brought the sizes, corners, text, shadow, hover and disabled colors in line with Figma: the old Button was 36px icons, 6px corners, 12px text at `sm` and no shadow, which made the topbar look off.
 
 **How to apply:**
 
 - Use `pending` for work the button started. Use `disabled` only when the button is truly unavailable and needs no explanation. Use `aria-disabled` when it needs one (a tooltip or helper text).
 - During generation, show a separate Stop button next to the pending one. Button doesn't swap itself into Stop, because Stop is a different action with its own handler.
-- Hovers are written `hover:not-aria-disabled:…`, so blocked buttons don't react. Keep that form when adding a variant.
+- Hovers are written `hover:not-aria-disabled:…`, so blocked buttons don't react. Disabled colors are written `data-disabled:…`. Keep both forms when adding a variant.
+- Mark icons beside a label with `data-icon`. An icon-only button uses an `icon-*` size and needs an `aria-label`.
 - To truncate a long label, wrap its text in `<span className='truncate'>`. The button stops at its container's width (`max-w-full`).
-- ℹ️ The `motion.span` makes Button a client component. If the apps use React Server Components, the build needs the `"use client"` step (CLAUDE.md → "Stack").
+- ℹ️ The spinner's `motion.span` makes Button a client component. If the apps use React Server Components, the build needs the `"use client"` step (CLAUDE.md → "Stack").
 
 ---
 
@@ -276,25 +298,26 @@ Any change to a type token (`--text-*`, `--font-weight-*`, `--font-*`) or to `ty
 | Utility | Tailwind default | UCL | Typography `weight` |
 | --- | --- | --- | --- |
 | `font-light` | 300 | **280** | |
-| `font-normal` | 400 | **350** | `regular` |
-| `font-medium` | 500 | **450** | `medium` |
-| `font-semibold` | 600 | **550** | `semibold` |
-| `font-bold` | 700 | **650** | `bold` |
+| `font-normal` | 400 | **380** | `regular` |
+| `font-medium` | 500 | **480** | `medium` |
+| `font-semibold` | 600 | **580** | `semibold` |
+| `font-bold` | 700 | **680** | `bold` |
 | `font-extrabold` | 800 | 800 | |
 | `font-black` | 900 | 900 | `black` |
 
-`body` uses the normal weight (`font-weight: var(--font-weight-normal)` in `theme.css`'s base layer), so all text inherits 350 at every size unless a `font-*` utility is set. The `--text-*` sizes don't set a weight. Inside a bold parent, text inherits bold, as normal CSS does.
+`body` uses the normal weight (`font-weight: var(--font-weight-normal)` in `theme.css`'s base layer), so all text inherits 380 at every size unless a `font-*` utility is set. The `--text-*` sizes don't set a weight. Inside a bold parent, text inherits bold, as normal CSS does.
 
-**Why:** product decision (2026-10-20). Geist's standard weights read heavy in the UI, so each step from normal to bold is 50 lighter, and light is 20 lighter (280). Geist is a variable font, so these are real weights, not fallbacks.
+**Why:** product decision (2026-10-20). Geist's standard weights read heavy in the UI, so each step from normal to bold is lighter than Tailwind's, and light is 20 lighter (280). Revised 2026-10-28 from 350/450/550/650 to 380/480/580/680 (20 lighter than Tailwind's instead of 50): the first scale read too thin. `light` stays 280. Geist is a variable font, so these are real weights, not fallbacks.
 
 **How to apply:**
 
 - Use the named utilities (`font-medium`, `font-bold`) or Typography's `weight`. Never write `font-[500]` or `font-[700]` to get Tailwind's values back.
-- Regular text needs no class: it inherits 350 from `body`. Add `font-normal` only to reset a bolder parent.
+- Regular text needs no class: it inherits 380 from `body`. Add `font-normal` only to reset a bolder parent.
 - Changing one step changes every component that uses it: Button (`font-medium`), Label, FieldLegend, the Typography headings (`font-bold`). Check them in Storybook.
-- ⚠️ **Constraint:** apps must load Geist as a variable font (`wght@100..900`), as Storybook does in `.storybook/preview-head.html`. A static weight list would round 280, 350, 450, 550 and 650 to the nearest loaded weight.
-- ⚠️ **Constraint:** `theme.css` ships to consumers, so the apps' own `font-normal`/`medium`/`semibold`/`bold` change too, and all their unstyled text becomes 350.
-- ✅ **Resolved in Figma (2026-10-20):** the weights live in `semantic` → `font-weight/light` … `/black` (scope: font weight), so each product's mode can set its own. Archie and Archie-dark are 280, 350, 450, 550, 650, 800 and 900, the same as `theme.css`; Itopia and itopia-dark keep the standard 300–900. They moved from `primitives` → `font-weight/*`, which were deleted after their only users (the three `7xl` styles) were rebound. Figma renders them through Geist's variable `wght` axis.
+- ⚠️ **Constraint:** apps must load Geist as a variable font (`wght@100..900`), as Storybook does in `.storybook/preview-head.html`. A static weight list would round 280, 380, 480, 580 and 680 to the nearest loaded weight.
+- ⚠️ **Constraint:** `theme.css` ships to consumers, so the apps' own `font-normal`/`medium`/`semibold`/`bold` change too, and all their unstyled text becomes 380.
+- ✅ **Resolved in Figma (2026-10-20):** the weights live in `semantic` → `font-weight/light` … `/black` (scope: font weight), so each product's mode can set its own. Archie and Archie-dark were set to 280, 350, 450, 550, 650, 800 and 900; Itopia and itopia-dark keep the standard 300–900. They moved from `primitives` → `font-weight/*`, which were deleted after their only users (the three `7xl` styles) were rebound. Figma renders them through Geist's variable `wght` axis.
+- ⚠️ **Gap:** since 2026-10-28 `theme.css` is 380 / 480 / 580 / 680 for normal to bold, and Figma's Archie and Archie-dark `font-weight/normal` … `/bold` are still 350 / 450 / 550 / 650. Update them in Figma so designs and code render the same weight.
 - **Sync:** `semantic` → `font-weight/<name>` (Archie mode) maps to `--font-weight-<name>` in `theme.css`. Compare them on every token sync, like the colors.
 - ✅ **Resolved in Figma (2026-10-20):** all 55 text styles are Geist and bind their family (`semantic` → `font-family/bodytext` for xs–xl, `/headline` for 2xl–7xl), size, line height and paragraph spacing (`primitives` → `font-size/*`, `line-height/*`, `paragraph-gap/*`) and weight (`semantic` → `font-weight/*`). They render UCL's weights in the Archie modes, and the `2xl` styles moved from 24/36 to 24/32. 45 unstyled Input text layers were given their matching style, and the set has 0 stale bindings. The `7xl` styles moved off `font-family/font`, which resolves to the literal "String value" in the Itopia modes.
 
@@ -311,6 +334,120 @@ Any change to a type token (`--text-*`, `--font-weight-*`, `--font-*`) or to `ty
 ✅ **Resolved in Figma (2026-10-20):** the corner radius was bound to the old `radius/rounded-md` and now uses `semantic` → `radius/menu/container` (6px).
 
 **How to apply:** wrap the app once in `TooltipProvider`. Put interactive triggers in `TooltipTrigger asChild`. The tooltip becomes the trigger's accessible description, so it should say what the control does, not repeat its label.
+
+---
+
+## Segmented Control: Figma's MainNav on shadcn Tabs (`src/components/navigation/segmented-control/segmented-control.tsx`)
+
+**Rule:** SegmentedControl follows Figma's "MainNav" (`archie.ds`, page "Main Navigation", node `21:381`) on shadcn's Tabs structure and API. Figma builds it from library Buttons (md · 32), so the item states come from the Button set:
+
+- **Shape (Figma update 2026-10-28):** the row is a white pill (`background`, `rounded-full`) with no border, and every item is a pill too. The old 8px corners and the inside border are gone, and so is the stacking rule that put the selected fill over the border.
+- **Selected:** Button Solid with its fill overridden to `tone/neutral/neutral` → `bg-neutral`, a pill. The fill is an indicator element, not the trigger's background (see Motion).
+- **Unselected:** Button Outlined · Neutral with the stroke, shadow and fill removed: transparent on the row's `background`, label `foreground`, icon `icon`. Hover is `states/hover` → `accent`, a pill. Disabled is `foreground/subtle` → `foreground-subtle`, icon `icon-subtle` (same value; the Button set hides its icon layers, so the icon binding couldn't be read).
+- **Stacking:** bottom to top, an unselected item's hover fill, the selected fill (`z-10`), then every label and the focus outline (`z-20`, on the trigger's label span). Labels stay readable while the fill glides over them.
+- **Motion:** the selected fill is one indicator per control, shared through `layoutId` (MOTION.md "Tabs", the Connect pattern, `layoutSpring`). It glides to the newly selected item. The labels fade to their new color over `motionDuration.normal`, about the time the fill takes to arrive, so the new label isn't white on white. Under reduced motion both are near-instant. The `layoutId` is scoped with `useId()`, so two controls on one page never trade indicators.
+- **Focus is an inset outline, keyboard only:** the list clips its children, so the library's offset ring would be cut off, and a `ring` (a box-shadow) would paint under the indicator. An outline on the label span (a pill) paints above it. Chrome matches `:focus-visible` on a mouse click here (Radix's roving focus), so the trigger marks itself `data-pointer-focus` on pointer down and clears it on any key press or blur; the outline needs `:focus-visible:not([data-pointer-focus])`. Same fix as intercept-ucl's Tabs. Don't swap it back to plain `focus-visible:`. Figma's Button set has no Focus state.
+- **Selected label is `neutral-foreground`:** Figma binds the selected label and icon to `tone/brand/on-brand`, left over from the Solid · Brand Button. It has the same value as `tone/neutral/on-neutral` in both modes, and the pair follows the fill, as Checkbox does.
+- **Spacing:** 12px on both sides (8 item + 4 icon padding on the left, 8 label + 4 item padding on the right), 5px between icon and label (4 + 8 padding, −7 margin). The same 12px without an icon.
+- **Shadow:** Figma's is an unbound drop shadow, 0 0 8px black at 8%, with no effect style. It's written literally, `shadow-[0_0_8px_0_oklch(0_0_0/8%)]`, decision 2026-10-28.
+
+⚠️ **Gap:** the shadow needs an effect style (or a `semantic` shadow variable) in `archielabs.ds`. Until then it doesn't change in dark mode, where the rest of the `shadow-*` scale gets darker. When it exists, add it to the `shadow-*` scale and swap the literal.
+
+✅ **Resolved:** the MainNav frame's fill now binds the `semantic` `background/background`, and the old `colors/form/border` stroke is gone.
+
+✅ **Confirmed in Figma (2026-10-28 resync):** fill, pill shape, item padding, selected fill and label colors, text and shadow all match the code; nothing changed.
+
+ℹ️ Figma's MainNav doesn't clip its content; the code's `overflow-hidden` on the list looks the same, since every item is a pill inside the pill.
+
+**How to apply:** give `SegmentedControlList` an `aria-label`. Use `SegmentedControlContent` when each item owns a panel; leave it out when the control only switches a value. Don't add a `variant` or `size` until Figma has one.
+
+---
+
+## InputGroup: shadcn's structure, Input's skin (`src/components/forms/input-group/input-group.tsx`)
+
+**Rule:** InputGroup follows shadcn's current `input-group.tsx` for structure, props and alignment. Its look comes from UCL Input, not from shadcn: the group draws Input's border, fill, `shadow-xs`, radius and every state, and the control inside (`InputGroupInput` / `InputGroupTextarea`) drops its own in every state, read-only and invalid included.
+
+- **States come from the control**, read with `has-[[data-slot=input-group-control]…]`: hover `input-ring`, focus `ring` border plus the 3px `ring-outside` ring, `aria-invalid` red border and `destructive-subtle` fill, read-only and disabled `input-disabled` border and `background-subtle` fill. These match Input's exactly; change both together.
+- **The classes are written out in full.** Tailwind finds classes by reading the source, so a selector built with a template string (`has-[${control}…]`) produces no CSS and fails silently.
+- **Differences from shadcn:** no `dark:bg-input/30` (Input has no such fill); `InputGroupInput` is `h-full`, so it fits inside the border instead of overflowing it by 2px; a click on an addon focuses a textarea too, not only an input; `InputGroupText` styles direct-child icons only ("Composed components are black boxes"); an addon's own `onClick` still runs.
+
+ℹ️ No Figma "Input group" component exists yet. If one is added to `archielabs.ds`, sync this against it.
+
+---
+
+## PromptComposer: Figma's prompt-composer on InputGroup (`src/components/forms/prompt-composer/prompt-composer.tsx`)
+
+**Rule:** PromptComposer follows Figma's "prompt-composer" (`archie.ds`, node `29:2778`). It owns the text, Enter to send and the Send button. The app owns the other controls in the row (attach, model, mic) and passes them in as `PromptComposerButton`s.
+
+- **Frame:** InputGroup with Figma's 12px radius (`rounded-xl`, Tailwind's 12px; Figma's value is unbound) and 12px padding, and 8px between the text and the row. Figma's stroke is drawn inside and doesn't count in the layout, so the content sits 12px from the outer edge; the CSS border puts it 13px in, the same as Input. The box is 106px tall where Figma's is 108.
+- **Text:** two lines (40px) when empty, then it grows with its content. Cap it with `max-h-*` on `PromptComposerTextarea`: Figma doesn't show a cap. Placeholder `muted-foreground`. Figma's text style binds the old `typography/*` variables at weight 400; UCL keeps body weight 380, as Input does.
+- **Enter sends, Shift+Enter adds a line.** Enter that confirms an IME composition doesn't send. The message is trimmed; an empty one doesn't send. When uncontrolled, the box clears itself after sending.
+- **Send and voice:** decision 2026-10-28. Figma shows only the empty state, with a voice button. With `onVoice` set, an empty box shows voice mode ("Start voice mode", `AudioLines`); once there's text, the same button becomes Send (`ArrowUp`). Without `onVoice`, an empty box shows Send with `aria-disabled`, focusable but inactive (see Button). `pending` shows Button's pending state on Send and blocks Enter. Following Button's rule, a Stop button is a separate control the app adds.
+- **Colors:** Send is `tone/neutral/neutral` → `bg-neutral` with a `neutral-foreground` icon (Figma binds `on-brand`, the same value; see Segmented Control). The row's buttons use `icon/foreground` → `text-icon`. The border binds the old `colors/form/input`; UCL uses `input`, as for MainNav.
+
+⚠️ **Gap:** Send's hover is `bg-neutral/90`, following Button's solid variants. Figma has no hover for it; confirm it in Figma.
+
+✅ **Resolved:** the mic is Button `outline` with its `shadow-xs` since the 2026-10-28 Button sync. InputGroupButton no longer adds shadcn's `shadow-none`.
+
+⚠️ **Gap:** the model picker ("Default ⌄") is a stand-in in the stories until Select or DropdownMenu exists.
+
+**How to apply:** give the textarea a `placeholder` and an `aria-label`, and every `PromptComposerButton` an `aria-label`. Put `PromptComposerSubmit` last in the footer's right-hand group.
+
+---
+
+## Chat panel, ChatMessage and ActivityIndicator (`src/components/data-display/chat-{panel,message}`, `src/components/feedback/activity-indicator`)
+
+**Rule:** Figma's "chat-composer" (`archie.ds`, node `29:2886`) is split into three components, decision 2026-10-28. `ChatPanel` is the frame with header, body and footer slots, like Topbar. `ChatMessage` is the person's bubble. `ActivityIndicator` is the "Thinking…" row, the PRD's Component A (`prds/conversational-progress-feedback.md`). PromptComposer goes in the footer.
+
+- **Panel:** 16px corners (`rounded-2xl`, Tailwind's 16px; Figma's value is unbound), `form/border` → `input`, the "Shadow Prompt" effect style → `shadow-prompt` (a new token), and a fill from `background` to `background-subtle`, starting at 60.675% as in Figma. The header is 48px, `background`, 16px left and 8px right padding, with a bottom border. The body has 16px padding and 16px between messages, scrolls, and is a `log` live region. The footer insets the composer by 8px. ChatPanel's category is `data-display`, next to ChatMessage; nobody chose it explicitly, so move it if a better home appears.
+- **ChatMessage:** `bg-info-subtle`, `foreground`, 12px × 8px padding, Figma's unbound 10px corners with a square bottom right (`rounded-[10px] rounded-br-none`), right-aligned. Figma binds `palettes/catalina/50` (#edf2ff), a palette Archie's modes don't declare; `info-subtle` (info-50) is the nearest token, decision 2026-10-28. Long messages wrap at 85% of the thread (not in Figma) and keep their line breaks.
+- **ActivityIndicator:** a 14px brand `Loader` icon, 6px gap, `text-sm` label. Figma fills the label with brand → white → brand, and the white middle drops below 3:1 on white ("Thi king"). Here a highlight sweeps across the label (`pendingTextVariants`, 2s, linear, looping) and its lightest point is 80% brand mixed with `background`, which measures 3.16:1 on white. Decision 2026-10-28. The icon stays still, so only one thing moves. Under reduced motion the label is solid brand. It's `role='status'`: change its children to update it in place (PRD FR-02), never add a second one.
+- **Header text:** Figma's chat name is raw black (unbound); UCL uses `foreground`.
+- **Collapsed and expanded (Figma `State`, added 2026-10-28):** collapsed, the panel is a 32px rail with the same frame (corners, border, fill, shadow) and the Archie mark centered: an 18px `brand` circle (`colors/brand/archie`) with the white logomark. The API is shadcn Sidebar's: `open`, `defaultOpen`, `onOpenChange`, `data-state='expanded' | 'collapsed'`. `ChatPanelTrigger` (Figma's `panel-left` header button) collapses it; the whole rail is one button, `ChatPanelRail`, that expands it. The app's width for the open panel (e.g. `w-110`) loses to `data-[state=collapsed]:w-8`, so apps don't switch widths themselves. Header, thread and composer stay mounted and are hidden while collapsed, so a draft and the scroll position survive. The Archie mark is the app's (a child of the rail), not built into ChatPanel.
+
+⚠️ **Gap:** the PRD lists Default, Completed and Failed states for the activity indicator; Figma shows only Active. Add them when Figma has them. Archie's own replies have no Figma either, so ChatMessage has no variant for them.
+
+- **Header actions (Figma update 2026-10-28):** 28px ghost buttons (`icon-sm`) with 16px icons, 2px apart. The history button uses archie.ds's "history, time" glyph, not lucide's (`src/layouts/archie/project/icons.tsx`). `ChatPanelTrigger` is the third one.
+
+⚠️ **Gap:** these are archie.ds's own "Button / Icon" set (Size=Smaller, 6px corners, 16px icons), not the master Button. UCL draws them with Button `icon-sm` (8px corners, so the icon is set to `size-4`). Move them to the master Button in Figma, or confirm the 6px corners.
+
+⚠️ **Gap:** the chat switcher ("{current-chat} ⌄") and the model picker are stand-ins in the stories until DropdownMenu or Select exists.
+
+- **Collapse and expand motion (2026-10-28):** the width is a CSS transition (`motionDuration.normal`, `standardTransition`'s curve), as in shadcn's Sidebar, so whatever sits beside the panel follows it frame by frame. A Motion `layout` animation would scale the panel and make its neighbors jump. Collapsing, the content fades out on `exitTransition` at `motionDuration.instant` while the panel narrows, then the rail fades in. Expanding, the rail goes, the panel widens, then the content fades in (`motionDuration.fast`, enter curve) once it has its full width, so no reflow is visible. Content hides with `display: none` through `transition-discrete` and fades in from `@starting-style`. Transitions start with the first toggle (`data-animate`), so nothing fades on load; before that the parts are `transition-none`, because CSS transitions every property by default. Under reduced motion every step is near-instant (`reducedMotionTransition`). Timing lives in CSS variables set from `src/lib/motion` (`panelTiming`).
+- **Hidden parts are `inert`:** the header, thread and composer while collapsed, the rail while expanded, from the first frame of the fade. Focus and screen readers never reach a half-hidden part, and only one control is "Expand chat" at a time.
+- **Collapse icon:** `panel-left-alt` (archielabs.ds icon, node `6154:10308`) (a panel with its divider set in from the left), drawn inline in `ChatPanelTrigger` with `currentColor`. Not lucide's `panel-left`.
+
+ℹ️ Figma has no hover for the rail; it has only the inset focus ring.
+
+⚠️ **Gap:** the panel's border and the bubble still bind the old `tokens` library and a non-Archie palette. Rebind them in Figma.
+
+**How to apply:** give `ChatPanel` an `aria-label`, and every icon-only header button an `aria-label`. Show one `ActivityIndicator` while Archie works and remove it when the reply starts streaming (PRD Component A).
+
+---
+
+## Topbar: a frame with three slots (`src/components/navigation/topbar/topbar.tsx`)
+
+**Rule:** Topbar follows Figma's "topbar" (`archie.ds`, node `26:528`). It draws only the frame and three areas; apps fill them. Don't add content props (`orgName`, `credits`…): a new action would mean a new prop.
+
+- **Frame:** a `header` with no fill, 8px top, bottom and left padding, 12px right. With a 32px row inside, it's 48px tall.
+- **Areas:** `TopbarStart` (6px gap) and `TopbarEnd` (12px gap, right-aligned) are both `flex-1` from zero width, so `TopbarCenter` sits in the middle of the padded area whatever the sides hold. The padding is uneven, so that's 2px left of the bar's middle, as in Figma. The Default story tests this. Figma's 4px gap between the action buttons belongs to the app's own button group, not to `TopbarEnd`.
+- **No background (Figma update 2026-10-28):** the frame's fill is gone, so the bar shows the app's background. The Archie project page puts `bg-muted` behind it, and so do the stories. Before, Topbar painted `bg-muted` itself. Apps that relied on that need to set it on the page.
+
+⚠️ **Gap:** parts of the Figma bar that UCL doesn't have yet are stand-ins in the stories, not exported: the Archie logo mark, the org and project switcher, Avatar, the credits meter and the bell's notification dot. Build each from its own Figma component, then replace the stand-in. The dot uses `bg-emphasis` (sky-500): Figma binds the old `colors/brand/accent-1` (#008cf7), which matches no token. Design decision 2026-10-28.
+
+⚠️ **Gap:** the credits meter (Figma icon "credits", 16px, on the credits Button's left) is a pie: the track binds `background/muted`, and the green arc is a raw #00d659, unbound. The story uses Figma's SVG as is. Before it becomes a component that shows the real balance, bind the arc to a token (`success` is the nearest role) and decide what the pie measures (credits left of the plan's total?).
+
+✅ **Resolved:** the action buttons are Button `outline` at `md` and `icon-md` (32px, 8px corners, 14px text, `shadow-xs`) since the 2026-10-28 Button sync, so the bar is 48px. Figma update 2026-10-28: the order is credits, MCP, GitHub, notifications, Share; the logo is an outlined 32px icon button with the brand Archie A (Figma "Button Archie"; the A is 16 × 18.44 since the third update that day); the org and project names are semibold; the notification dot sits 4px in from the corner. Second update the same day: the frame lost its fill, and the credits button gained the credits meter on its left ("397 credits").
+
+⚠️ **Gap:** the notification dot's fill still binds the old remote `tokens` library (`colors/brand/accent-1`). Rebind it in Figma, as for MainNav.
+
+✅ **Resolved:** the logo button ("Button Archie", 2026-10-28) now binds `colors/background/background`, `colors/input/border`, `radius/button/md` (8px) and `shadow-xs`, which are exactly Button `outline` at `icon-md`. The A is 16 × 18.44, centered (8px in from the left, 6.78px from the top).
+
+⚠️ **Gap:** the A's fill is a raw #d83f37, not bound to a variable. The code uses `text-brand` (vermilion-500, #d8402f), the nearest token and a near-identical red, so it follows dark mode. Bind the glyph to `colors/brand/archie` in Figma.
+
+⚠️ **Decision needed:** narrow screens. With the Archie project page's content (`src/layouts/archie/project`), the right-hand group was 373px and MainNav 458px, so below 1225px the right group slid under MainNav (the credits button disappeared at 1024). Measured before the credits pie and "397 credits" made the credits button wider, so the overlap now starts a little higher. It doesn't overflow the page, it overlaps to the left, so nothing flags it. Figma only has 1728. Options: drop button labels below a breakpoint, move credits and MCP into a menu, or let MainNav stop centering. Design the narrow topbar in Figma first.
+
+**How to apply:** put SegmentedControl in `TopbarCenter`, and the project on the left. Give each icon-only button an `aria-label`. With more than one Topbar on a page (as in AllVariants), give each an `aria-label`.
 
 ---
 
@@ -408,12 +545,13 @@ const { resolve } = useMotionPreference();
 | `--tone-accent*` | `tone/accent/*` | Prefixed: Figma's "accent" tone (dark gray) is not shadcn's `--accent` |
 | `--veil`, `--veil-soft` | `base/opacity-veil`, `base/opacity-soft` | Renamed: `bg-opacity-*` reads like an opacity utility |
 | `--shadow-color-sm/md/lg` | `shadow/sm/md/lg` | Colors for the `shadow-*` scale, which mirrors the effect styles |
+| `--shadow-prompt` | Effect style "Shadow Prompt" | 0 6px 12px −2px in `shadow-color-sm`. Added 2026-10-28 for the chat panel |
 
 ### Deliberately not mirrored
 
 - **Primitives as utilities:** only the 7 palettes the Archie modes reference (gray, vermilion, sky, info, success, warning, destructive) are declared, as `:root` variables. They aren't registered as Tailwind colors, so `bg-gray-100` stays Tailwind's gray. Components use semantic tokens. The other 15 palettes belong to other products' modes.
 - **Typography:** Geist is shipped, from `semantic` → `font-family/headline` and `/bodytext`. The type scale comes from `primitives` → `font-size/*` and `line-height/*` (2xl = 24/32). All 55 text styles bind to these since 2026-10-20; before, 48 rendered Inter at old line heights through orphaned variables. `font-size/xxs` (11px) is skipped: it has no paired line height and no text style uses it.
-- **Not synced yet:** `code/*` (syntax colors), `decorative/decorative-1`, `linear-1A/1B` (gradient stops), the `components` collection (`inbox-unread`, `chat-bubble`, `overlay`), the `radius/*` component radii, the `Sonner` effect style, `paragraph-gap/*` and `breakpoint/width|height` (the artboard size, not a breakpoint). Add each with the component that needs it.
+- **Not synced yet:** `code/*` (syntax colors), `decorative/decorative-1`, `linear-1A/1B` (gradient stops), the `components` collection (`inbox-unread`, `chat-bubble`, `overlay`), the `radius/*` component radii other than `radius/button/*` (synced with Button 2026-10-28), the `Sonner` effect style, `paragraph-gap/*` and `breakpoint/width|height` (the artboard size, not a breakpoint). Add each with the component that needs it.
 - **Spacing, font weights and base radius** already equal Tailwind's defaults and `--radius: 0.5rem`, so they aren't redefined.
 
 ### Archie-dark fixes made in Figma (2026-10-15)

@@ -27,30 +27,31 @@ Use one `default` button per view for the primary action. Use `secondary`, `outl
 
 <Canvas of={ButtonStories.AllVariants} />
 
-| Variant       | When to use                                         |
-| ------------- | --------------------------------------------------- |
-| `default`     | The main action in a view                           |
-| `secondary`   | A supporting action next to a primary button        |
-| `outline`     | A neutral action that needs a visible boundary      |
-| `ghost`       | Low-emphasis actions in toolbars and dense layouts  |
-| `link`        | An action that should read like inline text         |
-| `destructive` | Delete, remove, or other irreversible actions       |
+| Variant                 | Figma                | When to use                                        |
+| ----------------------- | -------------------- | -------------------------------------------------- |
+| `default`               | Solid · Brand        | The main action in a view                          |
+| `secondary`             | Flat · Brand         | A supporting action next to a primary button       |
+| `outline`               | Outlined · Neutral   | A neutral action that needs a visible boundary     |
+| `ghost`                 | Ghost · Neutral      | Low-emphasis actions in toolbars and dense layouts |
+| `link`                  | Link · Brand         | An action that should read like inline text        |
+| `destructive`           | Solid · Destructive  | Delete, remove, or other irreversible actions      |
+| `destructive-secondary` | Flat · Destructive   | A quieter destructive action, such as Remove       |
 
 ## Sizes
 
 <Canvas of={ButtonStories.Sizes} />
 
-`size="icon"` renders a square button. It has no visible label, so always set `aria-label`.
+Sizes follow Figma: `xs` (24px), `sm` (28px), `md` (32px, the default), `lg` (36px) and `xl` (40px). Each has a square icon-only size, `icon-xs` to `icon-xl`. An icon-only button has no visible label, so always set `aria-label`.
 
 ## With an icon
 
-Place icons from `lucide-react` as children. The button sizes them to 16px automatically. Mark decorative icons with `aria-hidden="true"`.
+Place icons from `lucide-react` as children. The button sizes them for its size (16px at `md`). Mark the icon `data-icon="inline-start"` before the label or `data-icon="inline-end"` after it: that side gets Figma's tighter padding. Mark decorative icons with `aria-hidden="true"`.
 
 <Canvas of={ButtonStories.WithIcon} />
 
 ## Pending
 
-Set `pending` while the work the button started is running. The button stays focusable, ignores more clicks, sets `aria-busy` and gently pulses its content. The label can change ("Generate app" → "Generating app"), but keep it about the same length so the button doesn't jump.
+Set `pending` while the work the button started is running. A spinner covers the label (Figma's Loading state); the label keeps its space, so the button doesn't change width. The button stays focusable, ignores more clicks and sets `aria-busy`, and its accessible name is still the label. The label can change ("Generate app" → "Generating app"), but keep it about the same length so the button doesn't jump.
 
 <Canvas of={ButtonStories.Pending} />
 
@@ -91,6 +92,6 @@ Set `asChild` to render the button styles on the child element instead of a `<bu
 - Renders a native `<button>`, so keyboard and screen reader support work out of the box.
 - The focus ring uses the `--ring` token and appears only on keyboard focus.
 - Icon-only buttons need an `aria-label`.
-- `pending` sets `aria-busy`. If people need to hear when the work finishes, announce the result in a `role="status"` region.
+- `pending` sets `aria-busy` and keeps the label as the accessible name, under the spinner. If people need to hear when the work finishes, announce the result in a `role="status"` region.
 - Prefer `aria-disabled` over `disabled` when the reason matters: a `disabled` button can't be focused, so its reason is never read out.
 - Use `asChild` with an `<a>` for navigation. Do not use a button with an `onClick` that changes the URL.

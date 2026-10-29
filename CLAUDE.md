@@ -16,14 +16,16 @@ Everything specific to this project is in this section, "Stack", "Figma", and DE
 | ------------ | ------------------------------------------------------------ |
 | Project      | Archie                                                       |
 | Package      | `@jcaunedo/archie-ucl` (repo `archie-ucl`)                          |
-| Apps         | ⚠️ Not defined. List the apps that consume UCL (used for `src/layouts/<app>/`) |
+| Apps         | `archie`: the Archie app builder (`src/layouts/archie/`). Add each app that consumes UCL here (used for `src/layouts/<app>/`) |
 | Brand        | DESIGN.md → "Brand names", "Brand voice"                     |
 
 ## How the rules work
 
 - **CLAUDE.md** (this file): how things are built here. Covers the stack, folder structure, component and story conventions and theme tokens.
 - **[MOTION.md](MOTION.md)**: the motion system. Covers principles, the named patterns, component guidance, accessibility and validation. Read it before any animation work. The values live in `src/lib/motion/`.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: how each app's layouts are wired, one section per app. Covers which file does what, how the pieces connect and which files are sample data to replace.
 - **[DESIGN.md](DESIGN.md)**: design contracts. Covers why a component is built the way it is, rules that a future edit or Figma/shadcn resync could silently break, and the brand voice.
+- **[documents/](documents/)**: background context. `what-is-archie.md` explains what Archie is, how the blueprint-first workflow runs and who it's for. Read it before writing product copy, sample data or simulated conversations.
 - **Skills** in `.claude/skills/` (`ucl-ds-sync`, `ucl-generate-component`, `ucl-generate-layout`, `ucl-ux-copywriter`) are project-agnostic. They read CLAUDE.md and DESIGN.md before they start (plus MOTION.md when the work involves animation) and take every project value (package, Figma file, categories, apps, component APIs, voice) from them. **When a skill and these files disagree, these files win.**
 - **Not defined here?** Ask, then record the answer in the right file so the next run doesn't have to ask again.
 
@@ -40,6 +42,8 @@ Everything specific to this project is in this section, "Stack", "Figma", and DE
 | `npm run test:watch`      | Same, re-running on change                   |
 
 `.npmrc` sets `include=dev`, so installs keep dev dependencies even when `NODE_ENV=production` is set in the environment.
+
+ℹ️ A running Storybook doesn't generate CSS for classes in a folder created under `src/` after it started (seen with `src/layouts/`): the markup has the class, the styles don't. Restart Storybook after adding a new top-level folder.
 
 ## Stack
 
@@ -75,6 +79,7 @@ The design system is split across two files:
 - **Tokens** (`theme.css`) come only from `archielabs.ds`, Archie modes only.
 - **Components** can come from either file. Shared components come from `archielabs.ds` and Archie-only ones from `archie.ds`. Both land in the same `src/components/<category>/` folders. A component in `archie.ds` that overrides a master component wins for UCL.
 - ⚠️ If `archie.ds` uses a variable that isn't in the master's `semantic` collection, flag it before adding a token. Archie-only tokens must not leak into the shared master.
+- **Status (Oct 28, 2026):** `archie.ds` now also holds Button (node `36:3337`, moved from `archielabs.ds`), MainNav, topbar, prompt-composer and chat-composer. Button's variables still come from the master's `semantic` collection. Values from `archielabs.ds` are always read in its **Archie** mode.
 - **Status (Oct 20, 2026):** `archie.ds` uses `archielabs.ds` as a library and has no variables of its own. Its first components are the Sidebar family (page "Sidebar": `sidebar`, `sidebar-menu-button`, `sidebar-menu-list`, `account-switcher`). Their old `tokens`/`foundation` library bindings were rebound to `archielabs.ds` `semantic`/`primitives` (0 left).
 - ⚠️ **Constraint:** `archielabs.ds` hides its `primitives` → `radius/*` from publishing, so `archie.ds` uses the `semantic` radii (`radius/menu/item` 6, `radius/default` 8). There's no published 4px radius: the icon buttons in the Sidebar sets keep a raw 4px until one is added.
 
@@ -96,7 +101,7 @@ Skills compare every Figma URL's `fileKey` against both files in this table and 
   Categories: `buttons`, `forms`, `cards`, `data-display`, `feedback`, `overlays`, `navigation`, `typography`. Create a category folder when its first component arrives. Don't invent a category that isn't listed here without asking.
 
   Exception: `typography` holds a single component, so its files sit directly in `src/components/typography/` (no `typography/typography/`), as in bethere-ucl. Import it from `@/components/typography`.
-- **Layouts:** full-page reference compositions under `src/layouts/<app>/<name>/`, previewed in Storybook and **not** exported from `src/index.ts`. Layouts used by more than one app go in `src/layouts/shared/`. Apps are listed in "Project". Screens in a multi-screen flow nest under `src/layouts/<app>/<flow>/`; list each flow here when it's created.
+- **Layouts:** full-page reference compositions under `src/layouts/<app>/<name>/`, previewed in Storybook and **not** exported from `src/index.ts`. Layouts used by more than one app go in `src/layouts/shared/`. Apps are listed in "Project". Screens in a multi-screen flow nest under `src/layouts/<app>/<flow>/`; list each flow here when it's created. Each app's wiring (which file does what, how the pieces connect, which files are sample data) is in [ARCHITECTURE.md](ARCHITECTURE.md), one section per app. Read the app's section before working on its layouts, and update it in the same change when the wiring changes; a new app gets its own section.
 - **Lib:** `src/lib/`
   - `utils.ts`: `cn()`
   - `breakpoints.ts`: `breakpoints`, `mediaAbove()`
@@ -180,23 +185,47 @@ export { Button, buttonVariants } from "@/components/buttons/button";
 Mirror these names when a new component has the same concept. Keep this list current when components are added.
 
 - **Button** (`buttons/button`):
-  - `variant`: `default` | `secondary` | `outline` | `ghost` | `link` | `destructive`
-  - `size`: `default` | `sm` | `lg` | `icon`
+  - `variant`: `default` | `secondary` | `outline` | `ghost` | `link` | `destructive` | `destructive-secondary` (Figma Style · Tone, DESIGN.md "Button")
+  - `size`: `xs` (24) | `sm` (28) | `md` (32, default) | `lg` (36) | `xl` (40), and `icon-xs` … `icon-xl` (Figma Size and Type). Renamed 2026-10-28: breaking
+  - Mark an icon beside the label `data-icon='inline-start'` or `'inline-end'`: that side gets Figma's tighter padding
   - `asChild` renders the button styles on its child (use for links)
-  - `pending` marks work in progress: `aria-busy`, stays focusable, ignores clicks (mirror this name for other components that start async work)
+  - `pending` marks work in progress: a spinner over the label, `aria-busy`, stays focusable, ignores clicks (mirror this name for other components that start async work)
   - `aria-disabled` is the focusable disabled state; `disabled` removes it from focus and pointer
   - `type` defaults to `"button"`
 - **Input** (`forms/input`):
   - `size`: `default` (36px) | `lg` (40px). Replaces the native `size` attribute
   - States come from the element: `aria-invalid` (error), `readOnly`, `disabled`. No `variant` prop
-  - Bare field only. Label and helper text come from Label/Field; icons and addons from InputGroup (not built yet)
+  - Bare field only. Label and helper text come from Label/Field; icons and addons from InputGroup
+- **InputGroup** (`forms/input-group`): shadcn's InputGroup skinned with Input's tokens and states. `InputGroup`, `InputGroupAddon`, `InputGroupButton`, `InputGroupText`, `InputGroupInput`, `InputGroupTextarea`
+  - `InputGroupAddon` `align`: `inline-start` (default) | `inline-end` | `block-start` | `block-end`
+  - `InputGroupButton` `size`: `xs` (default) | `sm` | `icon-xs` | `icon-sm` (shadcn's names; drawn by Button `xs`, `md`, `icon-xs`, `icon-md`); `variant` from Button, `ghost` by default
+  - States come from the control (`aria-invalid`, `readOnly`, `disabled`); set `data-disabled='true'` on the group to dim its addons
+- **PromptComposer** (`forms/prompt-composer`): the message box for Archie, on InputGroup. `PromptComposer` (a `form`), `PromptComposerTextarea`, `PromptComposerFooter`, `PromptComposerButton`, `PromptComposerSubmit` (Figma "prompt-composer" in `archie.ds`)
+  - `value` / `defaultValue` / `onValueChange`; `onSubmit(message)` gets the trimmed text on Enter or Send (Shift+Enter adds a line)
+  - `pending` (Button's name): Send is busy, nothing sends. `onVoice`: an empty box shows the voice button in place of Send
+  - Slots: the app's controls (attach, model, mic) go in the footer as `PromptComposerButton`s; `PromptComposerSubmit` goes last
 - **Textarea** (`forms/textarea`): same `size` and states as Input; `size` sets a minimum height, and it grows with its content
 - **Label** (`forms/label`): Radix Label. Above a field: medium weight, keeps its color when disabled. After a checkbox/radio/switch (`peer`): regular weight, `muted-foreground` when disabled
 - **Checkbox** (`forms/checkbox`): Radix Checkbox. `checked`: `true` | `false` | `"indeterminate"` (Figma "Partial")
 - **RadioGroup** / **RadioGroupItem** (`forms/radio-group`): Radix Radio Group
 - **Switch** (`forms/switch`): Radix Switch. `size`: `default` (36 × 20) | `sm` (28 × 16)
+- **SegmentedControl** (`navigation/segmented-control`): Radix Tabs under shadcn's Tabs API. `SegmentedControl`, `SegmentedControlList`, `SegmentedControlTrigger`, `SegmentedControlContent` (Figma "MainNav" in `archie.ds`)
+  - `value` / `defaultValue` / `onValueChange` from Radix; one size (32px, Figma Button md · 32), no `variant`
+  - Trigger takes an optional 16px icon before its label; `disabled` per trigger
+  - Content is optional: leave it out when the control only switches a value
+- **Topbar** (`navigation/topbar`): `Topbar` (a `header`), `TopbarStart`, `TopbarCenter`, `TopbarEnd` (Figma "topbar" in `archie.ds`)
+  - Slots only: no `variant`, `size` or content props. Apps place the logo, project, SegmentedControl, Buttons and account inside
+  - `TopbarCenter` stays centered on the bar; leave it out and the two sides split the width
 - **Tooltip** (`overlays/tooltip`): Radix Tooltip. `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` (wrap the app once)
   - `TooltipContent` `size`: `default` (Figma Medium) | `sm` (Figma Small); `side`, `sideOffset` (default 4) from Radix
+- **ChatPanel** (`data-display/chat-panel`): `ChatPanel` (a `section`), `ChatPanelHeader`, `ChatPanelBody` (`role='log'`, scrolls), `ChatPanelFooter`, `ChatPanelTrigger`, `ChatPanelRail` (Figma "chat-composer" in `archie.ds`)
+  - Slots only, like Topbar: apps put the chat switcher and actions in the header, messages in the body, PromptComposer in the footer
+  - `open` / `defaultOpen` (true) / `onOpenChange`, `data-state`: `expanded` | `collapsed` (shadcn Sidebar's names; Figma `State`). Collapsed is a 32px rail
+  - `ChatPanelTrigger` collapses it from the header; `ChatPanelRail` (the collapsed strip, holding the Archie mark) expands it. Content stays mounted while collapsed
+- **ChatMessage** (`data-display/chat-message`): the person's message, a right-aligned bubble. No props beyond the `div`'s; Archie's replies have no Figma yet
+- **ActivityIndicator** (`feedback/activity-indicator`): Archie's live status ("Thinking…"), PRD "Conversational progress feedback" Component A
+  - The label is the children; replace it in place. `role='status'`. Shimmers while shown (`pendingTextVariants`), solid under reduced motion
+  - Only the PRD's Active state exists; Default, Completed and Failed wait for Figma
 - **Typography** (`typography/`, the category folder itself):
   - `size`: `xs` | `sm` | `base` | `lg` | `xl` | `2xl` | `3xl` | `4xl` | `5xl` | `6xl` | `7xl` (the `--text-*` scale)
   - `weight`: `regular` | `medium` | `semibold` | `bold` | `black`
@@ -215,10 +244,10 @@ All tokens live in `src/styles/theme.css`:
 - **`:root`:** primitives (`--gray-500`, `--vermilion-500`, …). **`:root, .dark`:** Archie (light) semantic values. **`.dark`:** Archie-dark values that differ. Colors are written in `oklch`. Don't mix formats.
 - **Semantic roles** use shadcn names: `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive` (each with `-foreground`), and `border`, `input`, `ring`. Figma's extra roles sit beside them: tones (`brand`, `tone-accent`, `emphasis`, `neutral`, `info`, `success`, `warning`, `destructive`, each with `-subtle`/`-muted`, most with `-defined`/`-foreground`), surfaces (`background-subtle`, `card-muted`, `border-subtle`, `modal`, …), `icon-*`, states (`link`, `active`, `highlight`, `disabled`, `veil`), `chart-1`–`5` and `sidebar-*`. DESIGN.md → "Figma → theme.css token map" has the full map.
 - **Use semantic utilities** (`bg-brand-subtle`, `text-icon-muted`). Primitives aren't Tailwind utilities: `bg-gray-100` is Tailwind's gray, not Archie's.
-- **Radius:** one `--radius` (0.5rem). `rounded-sm/md/lg` (4/6/8px) derive from it.
-- **Shadows:** `shadow-xs` … `shadow-2xl` follow the Figma effect styles. Their colors switch per mode.
+- **Radius:** one `--radius` (0.5rem). `rounded-sm/md/lg` (4/6/8px) derive from it. Button has its own `rounded-button-xs` … `xl` (Figma `radius/button/*`).
+- **Shadows:** `shadow-xs` … `shadow-2xl` follow the Figma effect styles, plus `shadow-prompt` (Figma "Shadow Prompt", floating panels). Their colors switch per mode.
 - **Spacing:** Tailwind's default scale already matches Figma. Don't redefine it.
-- **Font weights:** lighter than Tailwind's: `light` 280, `normal` 350, `medium` 450, `semibold` 550, `bold` 650 (`extrabold`/`black` unchanged). `body` uses the normal weight, so all text is 350 unless a `font-*` is set (DESIGN.md "Font weight scale").
+- **Font weights:** lighter than Tailwind's: `light` 280, `normal` 380, `medium` 480, `semibold` 580, `bold` 680 (`extrabold`/`black` unchanged). `body` uses the normal weight, so all text is 380 unless a `font-*` is set (DESIGN.md "Font weight scale").
 - **Typography specs:** the full spec is written out in `typography.tsx`'s top comment, Storybook "Typography/Typography" and "Foundations/Typography". Changing a type token or heading default updates all three in the same change (DESIGN.md "Typography specs live in three places").
 
 To add a token, add it to `:root, .dark` (plus `.dark` when the dark value differs), then map it in `@theme inline`. Adding a token is a minor version; renaming or removing one is breaking.
@@ -281,7 +310,7 @@ npm install @jcaunedo/archie-ucl
 
 `@source` makes Tailwind scan UCL's bundled JS for class names. Without it, component styles silently go missing.
 
-UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** as a variable font (`wght@100..900`, needed for UCL's 280–650 weights) and **Geist Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
+UCL declares the font tokens but doesn't load the webfonts. Each app loads **Geist** as a variable font (`wght@100..900`, needed for UCL's 280–680 weights) and **Geist Mono** (400–700), e.g. with `next/font/google` or a Google Fonts `<link>` (Storybook's is in `.storybook/preview-head.html`). Without them, text falls back to the system sans.
 
 ```tsx
 import { Button } from "@jcaunedo/archie-ucl";

@@ -29,14 +29,14 @@ import { cn } from "@/lib/utils";
  * | `7xl`  | 80 / 120                |
  *
  * Weights (`weight`, the `--font-weight-*` tokens), lighter than Tailwind's from regular to bold. `body` uses the
- * regular weight, so all text is 350 unless a weight is set:
+ * regular weight, so all text is 380 unless a weight is set:
  *
  * | `weight`   | Utility         | UCL | Tailwind | Figma          |
  * | ---------- | --------------- | --- | -------- | -------------- |
- * | `regular`  | `font-normal`   | 350 | 400      | `<size>/<size>` |
- * | `medium`   | `font-medium`   | 450 | 500      | `-medium`      |
- * | `semibold` | `font-semibold` | 550 | 600      | `-semibold`    |
- * | `bold`     | `font-bold`     | 650 | 700      | `-bold`        |
+ * | `regular`  | `font-normal`   | 380 | 400      | `<size>/<size>` |
+ * | `medium`   | `font-medium`   | 480 | 500      | `-medium`      |
+ * | `semibold` | `font-semibold` | 580 | 600      | `-semibold`    |
+ * | `bold`     | `font-bold`     | 680 | 700      | `-bold`        |
  * | `black`    | `font-black`    | 900 | 900      | `-black`       |
  *
  * `font-light` is 280 (Tailwind 300). Typography has no `light` weight: Figma has no light text style, so use the
@@ -63,13 +63,13 @@ const typographyVariants = cva("font-sans", {
 			"7xl": "text-7xl",
 		},
 		weight: {
-			// Figma `<size>/<size>`: 350
+			// Figma `<size>/<size>`: 380
 			regular: "font-normal",
-			// Figma `-medium`: 450
+			// Figma `-medium`: 480
 			medium: "font-medium",
-			// Figma `-semibold`: 550
+			// Figma `-semibold`: 580
 			semibold: "font-semibold",
-			// Figma `-bold`: 650
+			// Figma `-bold`: 680
 			bold: "font-bold",
 			// Figma `-black`: 900
 			black: "font-black",

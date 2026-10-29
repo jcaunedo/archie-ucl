@@ -261,7 +261,7 @@ function MotionDemos() {
 					</div>
 					<figcaption className='flex items-center gap-2 text-xs text-muted-foreground'>
 						Reveal · <code>revealVariants</code>
-						<Button variant='link' size='sm' onClick={() => setRevealKey((key) => key + 1)}>
+						<Button variant='link' size='md' onClick={() => setRevealKey((key) => key + 1)}>
 							Replay
 						</Button>
 					</figcaption>

@@ -14,18 +14,11 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: "select",
-			options: [
-				"default",
-				"destructive",
-				"outline",
-				"secondary",
-				"ghost",
-				"link",
-			],
+			options: ["default", "secondary", "outline", "ghost", "link", "destructive", "destructive-secondary"],
 		},
 		size: {
 			control: "select",
-			options: ["default", "sm", "lg", "icon"],
+			options: ["xs", "sm", "md", "lg", "xl", "icon-xs", "icon-sm", "icon-md", "icon-lg", "icon-xl"],
 		},
 	},
 } satisfies Meta<typeof Button>;
@@ -39,28 +32,66 @@ export const Default: Story = {
 	},
 };
 
+const variants = [
+	{ variant: "default", label: "Generate", figma: "Solid · Brand" },
+	{ variant: "secondary", label: "Preview", figma: "Flat · Brand" },
+	{ variant: "outline", label: "Share", figma: "Outlined · Neutral" },
+	{ variant: "ghost", label: "Cancel", figma: "Ghost · Neutral" },
+	{ variant: "link", label: "View docs", figma: "Link · Brand" },
+	{ variant: "destructive", label: "Delete", figma: "Solid · Destructive" },
+	{ variant: "destructive-secondary", label: "Remove", figma: "Flat · Destructive" },
+] as const;
+
+const sizes = ["xs", "sm", "md", "lg", "xl"] as const;
+
+/** Figma's Button set: every variant, enabled, disabled and pending, at md · 32. */
 export const AllVariants: Story = {
 	render: () => (
-		<div className='flex flex-wrap items-center gap-3'>
-			<Button>Default</Button>
-			<Button variant='secondary'>Secondary</Button>
-			<Button variant='outline'>Outline</Button>
-			<Button variant='ghost'>Ghost</Button>
-			<Button variant='link'>Link</Button>
-			<Button variant='destructive'>Delete</Button>
+		<div className='grid grid-cols-[auto_repeat(4,auto)] items-center justify-items-start gap-x-4 gap-y-3 text-sm text-muted-foreground'>
+			<span />
+			<span>Default</span>
+			<span>With icon</span>
+			<span>Disabled</span>
+			<span>Pending</span>
+			{variants.map(({ variant, label, figma }) => (
+				<React.Fragment key={variant}>
+					<span>
+						{variant} <span className='text-foreground-subtle'>({figma})</span>
+					</span>
+					<Button variant={variant}>{label}</Button>
+					<Button variant={variant}>
+						<Sparkles data-icon='inline-start' aria-hidden='true' />
+						{label}
+					</Button>
+					<Button variant={variant} disabled>
+						{label}
+					</Button>
+					<Button variant={variant} pending>
+						{label}
+					</Button>
+				</React.Fragment>
+			))}
 		</div>
 	),
 };
 
+/** Figma Size=xs · 24 to xl · 40, Type=Text and Type=Icon. */
 export const Sizes: Story = {
 	render: () => (
-		<div className='flex flex-wrap items-center gap-3'>
-			<Button size='sm'>Small</Button>
-			<Button>Default</Button>
-			<Button size='lg'>Large</Button>
-			<Button size='icon' aria-label='Continue'>
-				<ArrowRight aria-hidden='true' />
-			</Button>
+		<div className='grid grid-cols-[auto_auto_auto_auto] items-center justify-items-start gap-x-4 gap-y-3 text-sm text-muted-foreground'>
+			{sizes.map((size) => (
+				<React.Fragment key={size}>
+					<span>{size}</span>
+					<Button size={size}>Continue</Button>
+					<Button size={size} variant='outline'>
+						<Sparkles data-icon='inline-start' aria-hidden='true' />
+						Generate
+					</Button>
+					<Button size={`icon-${size}`} variant='outline' aria-label='Continue'>
+						<ArrowRight aria-hidden='true' />
+					</Button>
+				</React.Fragment>
+			))}
 		</div>
 	),
 };
@@ -70,7 +101,7 @@ export const WithIcon: Story = {
 		children: (
 			<>
 				Continue
-				<ArrowRight aria-hidden='true' />
+				<ArrowRight data-icon='inline-end' aria-hidden='true' />
 			</>
 		),
 	},
@@ -91,14 +122,17 @@ export const AsLink: Story = {
 	),
 };
 
-/** Test: a pending button is busy and blocked, ignores clicks, and stays reachable by keyboard. */
+/**
+ * Figma State=Loading: a spinner covers the label, which keeps its space, so the width doesn't change.
+ * Test: a pending button is busy and blocked, ignores clicks, stays reachable by keyboard, and keeps its width.
+ */
 export const Pending: Story = {
 	args: {
 		pending: true,
 		onClick: fn(),
 		children: (
 			<>
-				<Sparkles aria-hidden='true' />
+				<Sparkles data-icon='inline-start' aria-hidden='true' />
 				Generating app
 			</>
 		),
@@ -106,6 +140,7 @@ export const Pending: Story = {
 	play: async ({ args, canvas, userEvent }) => {
 		const button = canvas.getByRole("button", { name: "Generating app" });
 		await expect(button).toHaveAttribute("aria-busy", "true");
+		await expect(button.querySelector("[data-slot='button-spinner']")).not.toBeNull();
 		await expect(button).toHaveAttribute("aria-disabled", "true");
 
 		// Still reachable by keyboard (a `disabled` button would be skipped), and Enter does nothing.
@@ -125,12 +160,12 @@ function GenerateWithStop() {
 	return (
 		<div className='flex items-center gap-3'>
 			<Button pending={generating} onClick={() => setGenerating(true)}>
-				<Sparkles aria-hidden='true' />
+				<Sparkles data-icon='inline-start' aria-hidden='true' />
 				{generating ? "Generating app" : "Generate app"}
 			</Button>
 			{generating && (
 				<Button variant='outline' onClick={() => setGenerating(false)}>
-					<Square aria-hidden='true' />
+					<Square data-icon='inline-start' aria-hidden='true' />
 					Stop
 				</Button>
 			)}
@@ -201,7 +236,7 @@ export const LongLabel: Story = {
 				<span className='truncate'>Generate the blueprint for every module in this app</span>
 			</Button>
 			<Button variant='outline'>
-				<ArrowRight aria-hidden='true' />
+				<ArrowRight data-icon='inline-start' aria-hidden='true' />
 				<span className='truncate'>Continue to the deployment settings for production</span>
 			</Button>
 		</div>

@@ -26,7 +26,7 @@ const meta = {
 	render: (args) => (
 		<Tooltip defaultOpen>
 			<TooltipTrigger asChild>
-				<Button size='icon' variant='outline' aria-label='Add module'>
+				<Button size='icon-md' variant='outline' aria-label='Add module'>
 					<Plus aria-hidden='true' />
 				</Button>
 			</TooltipTrigger>
@@ -69,7 +69,7 @@ export const OnFocus: Story = {
 	render: (args) => (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<Button size='icon' variant='outline' aria-label='Add module'>
+				<Button size='icon-md' variant='outline' aria-label='Add module'>
 					<Plus aria-hidden='true' />
 				</Button>
 			</TooltipTrigger>

@@ -166,6 +166,8 @@ const iconSwapReducedVariants: Variants = {
  * - `pendingIconVariants` — the small control that started the work: scale + fade.
  * - `pendingIconReducedVariants` — the same control under reduced motion: fade only, no scale.
  * - `pendingSurfaceVariants` — the content being worked on (a field, a card): fade only.
+ * - `pendingSpinnerVariants` — a spinner that replaces a label while its button works (Button `pending`).
+ * - `pendingTextVariants` — a status label that is still working ("Thinking…"): a highlight sweeps across it.
  */
 const pendingLoop = { duration: motionDuration.pendingLoop, repeat: Infinity, ease: "easeInOut" } as const;
 
@@ -184,6 +186,28 @@ const pendingSurfaceVariants: Variants = {
   pending: { opacity: [1, 0.5, 1], transition: pendingLoop },
 };
 
+/**
+ * A spinner for work in progress (Button `pending`, Figma State=Loading): one full turn per `pendingLoop`, linear, looping.
+ * Under reduced motion, use `pendingIconReducedVariants` instead: the spinner pulses in place.
+ */
+const pendingSpinnerVariants: Variants = {
+  idle: { rotate: 0 },
+  pending: { rotate: 360, transition: { duration: motionDuration.pendingLoop, repeat: Infinity, ease: "linear" } },
+};
+
+/**
+ * A status label that is still working ("Thinking…"): a highlight sweeps across the text, left to right. Needs a
+ * gradient text fill three times the label's width, highlight in the middle third, so it enters and leaves off-screen
+ * and the loop has no seam. Under reduced motion, use `idle` with a solid fill instead.
+ */
+const pendingTextVariants: Variants = {
+  idle: { backgroundPosition: "50% 0%" },
+  pending: {
+    backgroundPosition: ["100% 0%", "0% 0%"],
+    transition: { duration: motionDuration.pendingShimmer, repeat: Infinity, ease: "linear" },
+  },
+};
+
 export {
   fadeVariants,
   rowRemoveVariants,
@@ -199,4 +223,6 @@ export {
   pendingIconVariants,
   pendingIconReducedVariants,
   pendingSurfaceVariants,
+  pendingTextVariants,
+  pendingSpinnerVariants,
 };

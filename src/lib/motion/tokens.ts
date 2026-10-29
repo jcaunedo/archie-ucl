@@ -18,6 +18,8 @@ const motionDuration = {
 	deliberate: 0.6,
 	/** One cycle of a looping "working on it" pulse (Pending pattern). */
 	pendingLoop: 1.2,
+	/** One sweep of the highlight across a pending status label (Pending pattern, text). Slower than the pulse: it reads. */
+	pendingShimmer: 2,
 } as const;
 
 /** Pixels. */

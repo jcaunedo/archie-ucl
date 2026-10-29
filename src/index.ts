@@ -30,6 +30,8 @@ export {
 	pendingIconVariants,
 	pendingIconReducedVariants,
 	pendingSurfaceVariants,
+	pendingTextVariants,
+	pendingSpinnerVariants,
 	liftPattern,
 	pressPattern,
 	mediaHoverPattern,
@@ -53,6 +55,32 @@ export {
 } from "@/components/buttons/button";
 
 /* -------------------------------------------------------------------------- */
+/* Data Display                                                               */
+/* -------------------------------------------------------------------------- */
+
+export { ChatMessage, type ChatMessageProps } from "@/components/data-display/chat-message";
+export {
+	ChatPanel,
+	ChatPanelBody,
+	ChatPanelFooter,
+	ChatPanelHeader,
+	ChatPanelRail,
+	ChatPanelTrigger,
+	type ChatPanelBodyProps,
+	type ChatPanelFooterProps,
+	type ChatPanelHeaderProps,
+	type ChatPanelProps,
+	type ChatPanelRailProps,
+	type ChatPanelTriggerProps,
+} from "@/components/data-display/chat-panel";
+
+/* -------------------------------------------------------------------------- */
+/* Feedback                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export { ActivityIndicator, type ActivityIndicatorProps } from "@/components/feedback/activity-indicator";
+
+/* -------------------------------------------------------------------------- */
 /* Forms                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -73,7 +101,35 @@ export {
 	type FieldProps,
 } from "@/components/forms/field";
 export { Input, inputVariants, type InputProps } from "@/components/forms/input";
+export {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+	InputGroupText,
+	InputGroupTextarea,
+	inputGroupAddonVariants,
+	inputGroupButtonVariants,
+	type InputGroupAddonProps,
+	type InputGroupButtonProps,
+	type InputGroupInputProps,
+	type InputGroupProps,
+	type InputGroupTextareaProps,
+	type InputGroupTextProps,
+} from "@/components/forms/input-group";
 export { Label, type LabelProps } from "@/components/forms/label";
+export {
+	PromptComposer,
+	PromptComposerButton,
+	PromptComposerFooter,
+	PromptComposerSubmit,
+	PromptComposerTextarea,
+	type PromptComposerButtonProps,
+	type PromptComposerFooterProps,
+	type PromptComposerProps,
+	type PromptComposerSubmitProps,
+	type PromptComposerTextareaProps,
+} from "@/components/forms/prompt-composer";
 export {
 	RadioGroup,
 	RadioGroupItem,
@@ -82,6 +138,31 @@ export {
 } from "@/components/forms/radio-group";
 export { Switch, switchVariants, type SwitchProps } from "@/components/forms/switch";
 export { Textarea, textareaVariants, type TextareaProps } from "@/components/forms/textarea";
+
+/* -------------------------------------------------------------------------- */
+/* Navigation                                                                 */
+/* -------------------------------------------------------------------------- */
+
+export {
+	SegmentedControl,
+	SegmentedControlContent,
+	SegmentedControlList,
+	SegmentedControlTrigger,
+	type SegmentedControlContentProps,
+	type SegmentedControlListProps,
+	type SegmentedControlProps,
+	type SegmentedControlTriggerProps,
+} from "@/components/navigation/segmented-control";
+export {
+	Topbar,
+	TopbarCenter,
+	TopbarEnd,
+	TopbarStart,
+	type TopbarCenterProps,
+	type TopbarEndProps,
+	type TopbarProps,
+	type TopbarStartProps,
+} from "@/components/navigation/topbar";
 
 /* -------------------------------------------------------------------------- */
 /* Overlays                                                                   */

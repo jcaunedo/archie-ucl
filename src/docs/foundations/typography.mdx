@@ -15,11 +15,11 @@ The type tokens live in `src/styles/theme.css`, synced from the archielabs.ds Fi
 
 <FontFamilies css={themeCss} />
 
-ℹ️ `theme.css` declares the font tokens but doesn't load the webfonts. Storybook loads them in `.storybook/preview-head.html`. Consuming apps load Geist as a variable font (`wght@100..900`) and Geist Mono (400–700) themselves, e.g. with `next/font/google` (see CLAUDE.md → "Consumer Integration"). Without them, text falls back to the system font. With a fixed list of weights instead of the variable font, the 280–650 weights below round to the nearest loaded one.
+ℹ️ `theme.css` declares the font tokens but doesn't load the webfonts. Storybook loads them in `.storybook/preview-head.html`. Consuming apps load Geist as a variable font (`wght@100..900`) and Geist Mono (400–700) themselves, e.g. with `next/font/google` (see CLAUDE.md → "Consumer Integration"). Without them, text falls back to the system font. With a fixed list of weights instead of the variable font, the 280–680 weights below round to the nearest loaded one.
 
 ## Type scale
 
-Generated from the `--text-*` tokens. Each size sets its font size and paired line height, from Figma's `font-size/*` and `line-height/*` primitives. Sizes don't set a weight: text inherits `body`'s normal weight (350) unless a `font-*` utility is set.
+Generated from the `--text-*` tokens. Each size sets its font size and paired line height, from Figma's `font-size/*` and `line-height/*` primitives. Sizes don't set a weight: text inherits `body`'s normal weight (380) unless a `font-*` utility is set.
 
 <TypeScale css={themeCss} />
 
@@ -27,7 +27,7 @@ Generated from the `--text-*` tokens. Each size sets its font size and paired li
 
 ## Weights
 
-UCL's weights are lighter than Tailwind's from `light` to `bold`: 280, 350, 450, 550 and 650 instead of 300, 400, 500, 600 and 700. `extrabold` and `black` keep Tailwind's values. Generated from the `--font-weight-*` tokens in `theme.css`. Typography's `weight` prop uses the same scale (`regular` is `font-normal`).
+UCL's weights are lighter than Tailwind's from `light` to `bold`: 280, 380, 480, 580 and 680 instead of 300, 400, 500, 600 and 700. `extrabold` and `black` keep Tailwind's values. Generated from the `--font-weight-*` tokens in `theme.css`. Typography's `weight` prop uses the same scale (`regular` is `font-normal`).
 
 <FontWeights css={themeCss} />
 
