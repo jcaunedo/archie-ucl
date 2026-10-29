@@ -9,6 +9,9 @@ type FileChange = { path: string; change: "new" | "modified" };
 /** A question with its options. `dependsOn`: the earlier questions (by index) whose answers decide this one. */
 type ClarifyingQuestion = { question: string; options: string[]; dependsOn?: number[] };
 
+/** What Archie explains when asked about an error: what happened, then how to fix it, step by step (rule 9). */
+type ErrorHelp = { happened: string; fixes: string[] };
+
 /** The parts of the blueprint Plan shows, in its order. */
 type BlueprintSection = "user-types" | "modules" | "core-services" | "integrations";
 
@@ -80,7 +83,7 @@ type ArchieBlock =
 	/** Context that isn't a reply: "Restoring to a previous version: 2 → 1", "Stopped." */
 	| { kind: "note"; id: string; text: string }
 	/** What failed, what's unchanged, and the message that retries it (when retrying is safe). */
-	| { kind: "error"; id: string; title: string; detail: string; retry?: string; retried?: boolean };
+	| { kind: "error"; id: string; title: string; detail: string; retry?: string; retried?: boolean; help?: ErrorHelp };
 
 type ArchieTurn = {
 	kind: "archie";
@@ -135,15 +138,34 @@ type ArchieEvent =
 	| { type: "finish"; id: string; state: "done" | "failed"; credits?: number }
 	| { type: "version"; title: string }
 	| { type: "note"; text: string }
-	| { type: "error"; title: string; detail: string; retry?: string }
+	| { type: "error"; title: string; detail: string; retry?: string; help?: ErrorHelp }
 	| { type: "blueprint"; reveal: number }
 	| { type: "done" };
 
 /**
  * Where the project stands when a message is sent, so Archie only offers what exists: no design changes before anything
- * is generated (prds/chat-behavior-system.md rule 4).
+ * is generated (prds/chat-behavior-system.md rule 4). `error` is the latest error not yet retried, so a question like
+ * "what's the error?" is answered about it (rule 9).
  */
-type ProjectStage = { blueprint: boolean; built: boolean };
+type ProjectStage = {
+	blueprint: boolean;
+	built: boolean;
+	error?: { title: string; detail: string; retry?: string; help?: ErrorHelp };
+};
+
+/** The latest error in the thread that hasn't been retried, if any. */
+function unresolvedError(thread: ThreadItem[]) {
+	for (const item of [...thread].reverse()) {
+		if (item.kind !== "archie") {
+			continue;
+		}
+		const error = [...item.blocks].reverse().find((block) => block.kind === "error");
+		if (error?.kind === "error") {
+			return error.retried ? undefined : error;
+		}
+	}
+	return undefined;
+}
 
 /** What the person asked for: a message, or restoring an earlier version (not a message, so no bubble). */
 type ArchieRequest =
@@ -315,6 +337,7 @@ function applyEvent(thread: ThreadItem[], turnId: string, event: ArchieEvent, no
 					title: event.title,
 					detail: event.detail,
 					retry: event.retry,
+					help: event.help,
 				}),
 			);
 		case "done":
@@ -496,6 +519,7 @@ export {
 	person,
 	settleBlock,
 	stopTurn,
+	unresolvedError,
 	withAnswer,
 	youDecide,
 	type ArchieBlock,
@@ -505,6 +529,7 @@ export {
 	type ArchieTurn,
 	type BlueprintSection,
 	type ClarifyingQuestion,
+	type ErrorHelp,
 	type FileChange,
 	type NextStep,
 	type PersonMessage,

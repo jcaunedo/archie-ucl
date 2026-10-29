@@ -83,6 +83,25 @@ export const ChatCollapsed: Story = {
 	},
 };
 
+/**
+ * The chat's width can be changed by dragging the handle between the chat and the canvas.
+ * Test: the handle is a separator at 440px; → widens the chat by 16px, double-click resets it.
+ */
+export const ResizeChat: Story = {
+	args: {
+		respond: createSampleArchie(),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const handle = canvas.getByRole("separator", { name: "Resize chat" });
+		await expect(handle).toHaveAttribute("aria-valuenow", "440");
+		handle.focus();
+		await userEvent.keyboard("{ArrowRight}");
+		await expect(handle).toHaveAttribute("aria-valuenow", "456");
+		await userEvent.dblClick(handle);
+		await expect(handle).toHaveAttribute("aria-valuenow", "440");
+	},
+};
+
 /** An empty chat (Prompt Starters). Test: picking a starter sends it, and Archie answers. */
 export const EmptyChat: Story = {
 	args: {
@@ -345,12 +364,22 @@ export const PrototypeShortcut: Story = {
 		// The bubble says what the shortcut does, not the command.
 		await expect(canvas.getByRole("log")).toHaveTextContent("Show ask permission interaction");
 		await expect(within(canvas.getByRole("alert")).getByText("Ask permission")).toBeInTheDocument();
+		await userEvent.click(canvas.getByRole("button", { name: "Deny" }));
+		await archieFinished(canvas);
+
+		// Code generation plays a build: files processed and a new version.
+		await userEvent.type(composer, "/code");
+		await userEvent.keyboard("{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("Show code generation interaction");
+		await expect(canvas.getByRole("button", { name: /files processed/ })).toBeInTheDocument();
 	},
 };
 
 /**
  * A step that fails (Failure Disclosure, rule 9).
- * Test: connecting Stripe fails with an alert; Retry succeeds and adds a version.
+ * Test: connecting Stripe fails with an alert; asking "what's the error?" explains what happened and how to fix it;
+ * Retry succeeds and adds a version.
  */
 export const StepFails: Story = {
 	args: {
@@ -361,7 +390,14 @@ export const StepFails: Story = {
 		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "Connect Stripe{Enter}");
 		await archieFinished(canvas);
 		await expect(canvas.getByRole("alert")).toHaveTextContent("Couldn't connect to Stripe");
-		await userEvent.click(canvas.getByRole("button", { name: "Retry connecting Stripe" }));
+		// Asking about it explains what happened, then how to fix it; never "what would you like to do?".
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "what's the error?{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("What happened");
+		await expect(canvas.getByRole("log")).toHaveTextContent("How to fix it");
+		await expect(canvas.queryByRole("group", { name: "What would you like to do?" })).not.toBeInTheDocument();
+
+		await userEvent.click(canvas.getAllByRole("button", { name: "Retry connecting Stripe" })[0]);
 		await archieFinished(canvas);
 		await expect(canvas.getByText("Connected Stripe payments")).toBeInTheDocument();
 	},

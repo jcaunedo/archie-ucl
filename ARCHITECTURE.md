@@ -47,13 +47,14 @@ State, all in `Project`:
 - `plan`: how many Plan sections are drafted (`revealed`, 0 to 5) and whether Archie is still drafting. Seeded from `data.planRevealed`.
 - `credits`: the balance in the topbar, lowered by each build's credits.
 - A permission request waiting on the person (the latest turn's undecided `approval` block) renders as `ApprovalPrompt` on top of the composer (absolutely positioned in the footer, bottom-aligned; the composer is `inert` meanwhile); the thread shows `ApprovalRecord` once it's decided.
+- `chatWidthPx`, `resizing`, `chatOpen`: the chat's width, set by dragging `ChatResizeHandle` (the 2px between chat and canvas; 320–720px, 440 by default), whether it's being dragged (turns off ChatPanel's width easing), and whether the chat is open (the handle hides when collapsed).
 - `planFocus`: the Plan section a "What's next" review row asked to open (`NextStep.open`). Choosing one switches to Plan; `PlanCanvas` scrolls the section into view and rings it briefly. Next: open its first item in edit mode.
 - Answers messages keep their questions and values (`PersonMessage.answers`), so they expand to show their questions.
 - The chat's open state lives in `ChatPanel` (uncontrolled, `defaultChatOpen`). The thread follows the newest content unless the person has scrolled up; sending pins it to the end again.
 
 How Archie answers:
 
-- `respond` (an `ArchieResponder`) stands in for Archie's backend. `Project` calls it with an `ArchieRequest` (a message, carrying the project's `stage`: blueprint drafted, app built; or restoring a version) and gets back a function that stops it. A thread that opens on the person's message is answered on load.
+- `respond` (an `ArchieResponder`) stands in for Archie's backend. `Project` calls it with an `ArchieRequest` (a message, carrying the project's `stage`: blueprint drafted, app built, and the latest error not yet retried (`unresolvedError()`), so a question about it gets `explainError()`; or restoring a version) and gets back a function that stops it. A thread that opens on the person's message is answered on load.
 - The responder sends `ArchieEvent`s (`project/chat-model.ts`, an extension of the progress PRD's event model §11). `applyEvent()` turns each one into a change to the current turn: a status, a step in the live feed under it (`ArchieTurn.feed`, shown by `ActivityFeed`, the latest 2), a thought, streamed text, questions, a progress line, proposed actions, files and the file being written, a version, a note or an error. `blueprint` and a build's `credits` change the page instead. `done` ends the turn.
 - Times ("Thought for 3s", "Blueprint generated · 7s", "Worked for 6s") are measured from the events' real timestamps, never scripted.
 - Prototype shortcuts: commands in the `prototype` group (first in the menu, under "Preview interactions") play a scenario from `scenarios` in `sample-archie.ts`, whatever the stage (`/ask-permission`). Add a scenario there, and its command (`send: true`) and bubble text (`shortcutBubbles`) in `project.tsx`.
@@ -89,5 +90,6 @@ Each one replaces a component UCL doesn't have yet. When it lands in UCL, swap i
 | `TopbarActions`'s notification dot | `project/parts.tsx` | A Badge or dot on Button (Figma "Show Red Dot") |
 | `TopbarActions`'s credits pie (`images/credits.svg`, always the same slice) | `project/parts.tsx` | A credits meter that draws the real balance (DESIGN.md "Topbar") |
 | `TopbarActions`, `ChatActions` | `project/parts.tsx` | Nothing: they're UCL Buttons holding the page's copy |
+| `ChatResizeHandle` | `project/parts.tsx` | A Resizable component (shadcn Resizable) in UCL, and the handle in Figma |
 | `ArchieText`, `ActivityFeed`, `ApprovalPrompt` (wraps UCL `PromptAlert`), `ThoughtDisclosure`, `QuestionsCard`, `AnswersMessage`, `ProgressLine`, `NextSteps`, `FilesProcessed` (with the code stream), `VersionCard`, `ResponseActions`, `ErrorCard`, `Note`, `DaySeparator`, `QueueList`, `PromptStarters` | `project/chat-parts.tsx` | Their components in `archie.ds` (spec §4, §8). They come from Figma Archie-App, which isn't a design-system file |
 | `PlanCanvas` | `project/plan-canvas.tsx` | Plan's components in `archie.ds` (chips, section header, description card) |

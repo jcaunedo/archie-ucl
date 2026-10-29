@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Bell, ChevronDown, MessageCirclePlus, Plug, Share } from "lucide-react";
 
 import { Button } from "@/components/buttons/button";
@@ -127,4 +128,88 @@ function ModelPicker({ model }: { model: string }) {
 	);
 }
 
-export { Account, ArchieMark, ChatActions, ChatSwitcher, LogoLink, ModelPicker, ProjectSwitcher, TopbarActions };
+/** The chat's width: 440px by default (Figma), adjustable between these. The canvas always keeps `chatCanvasMin`. */
+const chatWidth = { default: 440, min: 320, max: 720, step: 16 };
+const chatCanvasMin = 480;
+
+/**
+ * The handle between the chat and the canvas: drag it to resize the chat (not in Figma; decision 2026-10-29). It's the
+ * 2px gap between them, with an 8px hit area, a resize cursor and a grip on hover or while dragging. A focusable
+ * separator: ← → resize by 16px, Home / End jump to the limits, double-click resets to 440px.
+ */
+function ChatResizeHandle({
+	width,
+	onWidthChange,
+	onResizingChange,
+}: {
+	width: number;
+	onWidthChange: (width: number) => void;
+	onResizingChange: (resizing: boolean) => void;
+}) {
+	const start = React.useRef<{ x: number; width: number } | null>(null);
+	const max = () => Math.min(chatWidth.max, window.innerWidth - chatCanvasMin);
+	const clamp = (value: number) => Math.round(Math.min(max(), Math.max(chatWidth.min, value)));
+
+	return (
+		<div
+			role='separator'
+			aria-orientation='vertical'
+			aria-label='Resize chat'
+			aria-valuemin={chatWidth.min}
+			aria-valuemax={chatWidth.max}
+			aria-valuenow={width}
+			tabIndex={0}
+			onPointerDown={(event) => {
+				event.preventDefault();
+				event.currentTarget.setPointerCapture(event.pointerId);
+				start.current = { x: event.clientX, width };
+				onResizingChange(true);
+			}}
+			onPointerMove={(event) => {
+				if (start.current) {
+					onWidthChange(clamp(start.current.width + event.clientX - start.current.x));
+				}
+			}}
+			onPointerUp={(event) => {
+				event.currentTarget.releasePointerCapture(event.pointerId);
+				start.current = null;
+				onResizingChange(false);
+			}}
+			onDoubleClick={() => onWidthChange(chatWidth.default)}
+			onKeyDown={(event) => {
+				const next = {
+					ArrowLeft: width - chatWidth.step,
+					ArrowRight: width + chatWidth.step,
+					Home: chatWidth.min,
+					End: max(),
+				}[event.key];
+				if (next !== undefined) {
+					event.preventDefault();
+					onWidthChange(clamp(next));
+				}
+			}}
+			className='group relative w-0.5 shrink-0 cursor-col-resize touch-none outline-none'
+		>
+			{/* The hit area, wider than the 2px gap it sits in. */}
+			<span aria-hidden className='absolute inset-y-0 -right-[3px] -left-[3px]' />
+			{/* The grip: shown on hover, while dragging, or when focused from the keyboard. */}
+			<span
+				aria-hidden
+				className='absolute top-1/2 left-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-icon-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-visible:ring-2 group-focus-visible:ring-ring group-active:opacity-100'
+			/>
+		</div>
+	);
+}
+
+export {
+	Account,
+	ArchieMark,
+	ChatActions,
+	ChatResizeHandle,
+	ChatSwitcher,
+	chatWidth,
+	LogoLink,
+	ModelPicker,
+	ProjectSwitcher,
+	TopbarActions,
+};

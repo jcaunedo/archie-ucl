@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Database, FileIcon, Frame, Mic, MousePointer2, Palette, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -41,6 +42,7 @@ import {
 	person,
 	settleBlock,
 	stopTurn,
+	unresolvedError,
 	withAnswer,
 	type ArchieBlock,
 	type ArchieEvent,
@@ -76,7 +78,9 @@ import {
 	Account,
 	ArchieMark,
 	ChatActions,
+	ChatResizeHandle,
 	ChatSwitcher,
+	chatWidth,
 	LogoLink,
 	ModelPicker,
 	ProjectSwitcher,
@@ -106,6 +110,7 @@ const commands = [
 	// Prototype shortcuts first, under "Preview interactions": each plays one scenario of the chat, at any point in the
 	// conversation. A divider separates them from Archie's commands.
 	{ name: "ask-permission", group: "prototype", send: true },
+	{ name: "code-generation", group: "prototype", send: true },
 	// Placeholders until Archie's command set is defined (prds/chat-behavior-system.md rule 12).
 	{ name: "command-1" },
 	{ name: "command-2" },
@@ -114,6 +119,7 @@ const commands = [
 /** What the person's bubble says for each prototype shortcut, instead of the command itself. */
 const shortcutBubbles: Record<string, string> = {
 	"/ask-permission": "Show ask permission interaction",
+	"/code-generation": "Show code generation interaction",
 };
 
 /** Ways to start an empty chat (Prompt Starters): one to build, two to learn. */
@@ -253,6 +259,10 @@ function ArchieTurnView({
 function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond }: ProjectProps) {
 	const { prefersReducedMotion } = useMotionPreference();
 	const [phase, setPhase] = useState<Phase>(defaultPhase);
+	// The chat's width (drag the handle between chat and canvas), whether it's being dragged, and whether it's open.
+	const [chatWidthPx, setChatWidthPx] = useState(chatWidth.default);
+	const [resizing, setResizing] = useState(false);
+	const [chatOpen, setChatOpen] = useState(defaultChatOpen);
 	const [thread, setThread] = useState(data.thread);
 	const [answering, setAnswering] = useState(false);
 	const [queue, setQueue] = useState<string[]>([]);
@@ -293,7 +303,15 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 			return;
 		}
 		if (next.kind === "message") {
-			next = { ...next, stage: { blueprint: plan.revealed >= planSections, built: currentVersion(thread) > 0 } };
+			const error = unresolvedError(thread);
+			next = {
+				...next,
+				stage: {
+					blueprint: plan.revealed >= planSections,
+					built: currentVersion(thread) > 0,
+					error: error && { title: error.title, detail: error.detail, retry: error.retry, help: error.help },
+				},
+			};
 		}
 		const turn = newTurn(Date.now());
 		activeTurn.current = turn.id;
@@ -423,9 +441,19 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 				</Topbar>
 
 				{/* Figma "Container": 8px on the sides and bottom, none on top, 2px between the chat and the canvas. */}
-				<div className='flex min-h-0 flex-1 gap-0.5 px-2 pb-2'>
+				{/* No gap: the resize handle is the 2px between the chat and the canvas (Figma's gap). */}
+				<div className='flex min-h-0 flex-1 px-2 pb-2'>
 					{/* 440px open; ChatPanel narrows itself to the 32px rail when collapsed, and the canvas takes the rest. */}
-					<ChatPanel aria-label='Chat' defaultOpen={defaultChatOpen} className='w-110 shrink-0'>
+					<ChatPanel
+						aria-label='Chat'
+						defaultOpen={defaultChatOpen}
+						onOpenChange={setChatOpen}
+						data-resizing={resizing || undefined}
+						// The chosen width (440px by default); collapsed still wins. While dragging, the width follows the pointer
+						// instead of easing.
+						className='w-(--chat-width) shrink-0 data-resizing:transition-none'
+						style={{ "--chat-width": `${chatWidthPx}px` } as React.CSSProperties}
+					>
 						<ChatPanelRail>
 							<ArchieMark />
 						</ChatPanelRail>
@@ -559,6 +587,11 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 							</PromptComposer>
 						</ChatPanelFooter>
 					</ChatPanel>
+					{chatOpen ? (
+						<ChatResizeHandle width={chatWidthPx} onWidthChange={setChatWidthPx} onResizingChange={setResizing} />
+					) : (
+						<div aria-hidden className='w-0.5 shrink-0' />
+					)}
 
 					{/* Figma "Canvas": 16px corners, `border/border`, a 48px header over the phase's content. */}
 					<main className='flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border'>

@@ -491,6 +491,16 @@ const sampleTurns: {
 				title: "Couldn't connect to Stripe",
 				detail: "Stripe didn't accept the test API key. Your store and checkout are unchanged, and no payments were set up.",
 				retry: "Retry connecting Stripe",
+				help: {
+					happened:
+						"I tried to connect Stripe with the test API key saved for this project, and Stripe rejected it as invalid. That usually means the key was copied incompletely, it's a live key in a test connection, or it was rolled (replaced) in Stripe. Nothing changed on your side: checkout works as before, and no payment settings were saved.",
+					fixes: [
+						"**Get a fresh test key:** in your Stripe Dashboard, turn on Test mode, then open Developers → API keys and copy the secret key. It starts with \"sk_test_\".",
+						"**Update it in Archie:** open Backend → Integrations → Stripe and paste the key, replacing the old one.",
+						"**Retry the connection:** choose Retry below. I'll pick up where I stopped, and nothing gets set up twice.",
+						"**Still failing?** Check that your Stripe account is activated and that the key belongs to the same account. Tell me what Stripe shows, and I'll help from there.",
+					],
+				},
 			}),
 			wait(0, { type: "done" }),
 		],
@@ -781,9 +791,41 @@ function restore(version: number, current: number): Step[] {
 	];
 }
 
+/** "What's the error?", "why did it fail?", "how do I fix it?": a question about an error. */
+const errorQuestion =
+	/\b(errors?|fail(ed|s|ure)?|went wrong|what happened|why|fix|broken|not working|couldn'?t|problem|issue)\b/i;
+
+/**
+ * Asked about an error, Archie explains what happened, then how to resolve it, step by step, and offers the retry when
+ * it's safe (rule 9). Never a generic "what would you like to do?".
+ */
+function explainError(error: NonNullable<ProjectStage["error"]>): Step[] {
+	const happened = error.help?.happened ?? `${error.title}. ${error.detail}`;
+	const fixes = error.help?.fixes ?? [
+		"**Retry:** it often works the second time if the problem was temporary.",
+		"**Tell me more:** describe what you expected, and I'll look for another way.",
+	];
+	return [
+		wait(0, { type: "status", label: "Thinking…" }),
+		...steps(["Read the error and what was running", "Checked what changed and what didn't"], 500),
+		wait(400, { type: "thought" }),
+		...say(`**What happened**
+
+${happened}
+
+**How to fix it**
+
+${fixes.map((fix, index) => `${index + 1}. ${fix}`).join("\n")}`),
+		...(error.retry ? [next([{ label: error.retry, description: "Try again with the current settings" }])] : []),
+		wait(0, { type: "done" }),
+	];
+}
+
 /** Prototype shortcuts (the commands menu's "prototype" group): each plays one scenario, whatever the stage. */
 const scenarios: Record<string, () => Step[]> = {
 	"ask-permission": () => askPermission,
+	// The first build: status and live feed, code streaming in, files processed, a version and what's next.
+	"code-generation": () => build(false),
 };
 
 /** Slash commands, as the request they stand for. */
@@ -861,6 +903,10 @@ function stepsFor(request: ArchieRequest, memory: Memory = {}): Step[] {
 	const stage = request.stage ?? { blueprint: true, built: true };
 	if (unreadable(text)) {
 		return garbled(memory, stage);
+	}
+	// A question about the latest error gets its explanation and fixes, before anything else is matched.
+	if (stage.error && errorQuestion.test(text)) {
+		return explainError(stage.error);
 	}
 	const turn = sampleTurns.find(({ match }) => match.test(text));
 	if (!turn) {
