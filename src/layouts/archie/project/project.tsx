@@ -343,7 +343,6 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 
 	/** Sends a message: queued while Archie works (rule 7), otherwise delivered. */
 	function send(text: string) {
-		pinnedToEnd.current = true;
 		if (answering) {
 			setQueue((current) => [...current, text]);
 			return;
@@ -419,34 +418,122 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 		return () => stopAnswering.current?.();
 	}, []);
 
-	// Follow the thread as it grows, unless the person has scrolled up to read. Streamed text follows at once; a "What's
-	// next" card that arrives glides into view (scrollTransition), and the thread waits for the glide before following
-	// again. Any wheel, touch, click or key stops the glide.
+	// Scrolling. Each message the person sends glides to the top of the thread (scrollTransition), and Archie's reply
+	// fills in below it; the thread doesn't follow the reply down. A spacer after the thread gives a short reply room, so
+	// the message can reach the top, and shrinks as the reply grows. A "What's next" card that lands below the fold
+	// glides into view, unless the person has scrolled. Any wheel, touch, click or key stops a glide.
 	const body = useRef<HTMLDivElement>(null);
-	const pinnedToEnd = useRef(true);
+	const spacer = useRef<HTMLDivElement>(null);
 	const glide = useRef<(() => void) | null>(null);
+	const mounted = useRef(false);
+	/** The person's latest message: the one kept at the top. */
+	const anchor = useRef<string | undefined>(undefined);
+	/** The person has scrolled since their last message, so nothing else moves the thread. */
+	const scrolledByPerson = useRef(false);
 	const nextStepsShown = useRef(actionsCount(data.thread));
+	/** A "What's next" card that arrived while the message was still gliding up: it goes next. */
+	const cardWaiting = useRef<HTMLElement | null>(null);
+
+	/** Glides a "What's next" card into view, if it isn't already, unless the person has scrolled. */
+	function showCard(card: HTMLElement) {
+		if (scrolledByPerson.current || !card.isConnected) {
+			return;
+		}
+		glide.current = scrollIntoViewSmoothly(card, {
+			reducedMotion: Boolean(prefersReducedMotion),
+			onEnd: () => {
+				glide.current = null;
+			},
+		});
+	}
+
+	/** Sizes the spacer so the latest message can scroll to the top, however short what follows it is. */
+	function sizeSpacer() {
+		const thread = body.current;
+		const end = spacer.current;
+		if (!thread || !end) {
+			return;
+		}
+		const message = anchor.current
+			? thread.querySelector<HTMLElement>(`[data-thread-item='${anchor.current}']`)
+			: null;
+		const last = end.previousElementSibling;
+		if (!message || !last) {
+			end.hidden = true;
+			return;
+		}
+		const { paddingTop, paddingBottom, rowGap } = getComputedStyle(thread);
+		const top = thread.getBoundingClientRect().top - thread.scrollTop;
+		const messageTop = message.getBoundingClientRect().top - top;
+		const contentEnd = last.getBoundingClientRect().bottom - top;
+		// The thread has to scroll at least to `messageTop - paddingTop`: the room still missing after the content.
+		const missing = messageTop - parseFloat(paddingTop) + thread.clientHeight - contentEnd - parseFloat(paddingBottom);
+		end.hidden = missing <= 0;
+		end.style.height = `${Math.max(0, missing - parseFloat(rowGap))}px`;
+	}
+
 	useLayoutEffect(() => {
 		const count = actionsCount(thread);
 		const arrived = count > nextStepsShown.current;
 		nextStepsShown.current = count;
-		if (!body.current || !pinnedToEnd.current) {
+		const latest = [...thread].reverse().find((item) => item.kind === "person");
+		const sent = latest !== undefined && latest.id !== anchor.current;
+		anchor.current = latest?.id;
+		sizeSpacer();
+		const log = body.current;
+		if (!log) {
 			return;
 		}
-		const card = arrived ? [...body.current.querySelectorAll<HTMLElement>("[data-slot='next-steps']")].at(-1) : undefined;
-		if (card) {
+		const message = latest ? log.querySelector<HTMLElement>(`[data-thread-item='${latest.id}']`) : null;
+		if (sent && message) {
+			// A new message to the top: sending glides; a thread opening on one jumps there.
+			scrolledByPerson.current = false;
+			cardWaiting.current = null;
 			glide.current?.();
-			glide.current = scrollIntoViewSmoothly(card, {
-				reducedMotion: Boolean(prefersReducedMotion),
+			glide.current = scrollIntoViewSmoothly(message, {
+				align: "start",
+				reducedMotion: !mounted.current || Boolean(prefersReducedMotion),
 				onEnd: () => {
 					glide.current = null;
+					// A card that came in meanwhile goes next, a frame later: if the person's scroll stopped this glide,
+					// its scroll event has marked it by then.
+					const card = cardWaiting.current;
+					cardWaiting.current = null;
+					if (card) {
+						requestAnimationFrame(() => showCard(card));
+					}
 				},
 			});
-		} else if (!glide.current) {
-			body.current.scrollTop = body.current.scrollHeight;
+			return;
+		}
+		const card = arrived ? [...log.querySelectorAll<HTMLElement>("[data-slot='next-steps']")].at(-1) : undefined;
+		if (card && glide.current) {
+			cardWaiting.current = card;
+		} else if (card) {
+			showCard(card);
 		}
 	}, [thread, queue, waiting]);
-	useEffect(() => () => glide.current?.(), []);
+
+	// The spacer follows every size change: the reply growing, a disclosure opening, the chat resizing.
+	useEffect(() => {
+		const log = body.current;
+		if (!log) {
+			return;
+		}
+		const observer = new ResizeObserver(() => sizeSpacer());
+		observer.observe(log);
+		for (const child of log.children) {
+			if (child !== spacer.current) {
+				observer.observe(child);
+			}
+		}
+		return () => observer.disconnect();
+	}, [thread, queue, waiting]);
+
+	useEffect(() => {
+		mounted.current = true;
+		return () => glide.current?.();
+	}, []);
 
 	/** The person's message before a turn: what Retry sends again. */
 	function messageBefore(turnId: string) {
@@ -503,16 +590,16 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 							<ChatActions />
 						</ChatPanelHeader>
 						{/* Busy while Archie answers, so assistive tech and tests know the thread is still changing. */}
+						{/* 16px of scroll padding: a message scrolled to the top keeps the thread's padding above it. */}
 						<ChatPanelBody
 							ref={body}
 							aria-busy={answering || undefined}
-							onScroll={(event) => {
-								// The glide's own scrolling isn't the person scrolling away.
-								if (glide.current) {
-									return;
+							className='scroll-pt-4'
+							onScroll={() => {
+								// A glide's own scrolling isn't the person scrolling.
+								if (!glide.current) {
+									scrolledByPerson.current = true;
 								}
-								const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
-								pinnedToEnd.current = scrollHeight - scrollTop - clientHeight < 24;
 							}}
 						>
 							{thread.length === 0 && <PromptStarters items={starters} onPick={send} />}
@@ -522,6 +609,7 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 									return (
 										<AnswersMessage
 											key={item.id}
+											data-thread-item={item.id}
 											intro={item.text.split("\n")[0]}
 											questions={questions}
 											answers={values}
@@ -529,7 +617,11 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 									);
 								}
 								if (item.kind === "person") {
-									return <ChatMessage key={item.id}>{item.text}</ChatMessage>;
+									return (
+										<ChatMessage key={item.id} data-thread-item={item.id}>
+											{item.text}
+										</ChatMessage>
+									);
 								}
 								if (item.kind === "separator") {
 									return <DaySeparator key={item.id} label={item.label} />;
@@ -577,6 +669,8 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 									onRemove={(index) => setQueue((current) => current.filter((_, item) => item !== index))}
 								/>
 							)}
+							{/* Room after a short reply, so the latest message can scroll to the top (sized by sizeSpacer). */}
+							<div ref={spacer} aria-hidden hidden className='shrink-0' />
 						</ChatPanelBody>
 						<ChatPanelFooter className='relative'>
 							{/* A permission request waits on top of the composer: bottom-aligned with it, centered, as wide as it

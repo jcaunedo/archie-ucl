@@ -579,7 +579,8 @@ function AnswersMessage({
 	intro,
 	questions,
 	answers,
-}: {
+	...props
+}: React.ComponentProps<typeof ChatMessage> & {
 	intro: string;
 	questions: ClarifyingQuestion[];
 	answers: string[];
@@ -590,7 +591,7 @@ function AnswersMessage({
 	const { prefersReducedMotion } = useMotionPreference();
 
 	return (
-		<ChatMessage className='flex flex-col gap-2 whitespace-normal'>
+		<ChatMessage {...props} className='flex flex-col gap-2 whitespace-normal'>
 			<p>{intro}</p>
 			<ol id={regionId} className='flex flex-col gap-1.5'>
 				{answers.map((answer, index) => (

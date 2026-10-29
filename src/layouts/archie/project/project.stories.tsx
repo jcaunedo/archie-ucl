@@ -164,7 +164,7 @@ export const PromptToBlueprint: Story = {
  * (/clarification-questions), opened on the prompt.
  * Test: choosing an option moves to the next question; a typed message answers the one after it; "You decide", the last
  * option, answers the third; typing a letter ("a.") picks that option on the fourth. The blueprint then ends on "What's
- * next", and the thread glides to it.
+ * next", in view.
  */
 export const ClarifyingQuestions: Story = {
 	args: {
@@ -189,11 +189,15 @@ export const ClarifyingQuestions: Story = {
 		await archieFinished(canvas);
 		await expect(canvas.getByRole("log")).toHaveTextContent(`4. ${blueprint.clarifyingQuestions[3].options[0]}`);
 
-		// The answers draft the blueprint, ending on "What's next": the thread glides to the card, its last line in view.
+		// The answers draft the blueprint, ending on "What's next": the card is in view, down to its last line.
 		const log = canvas.getByRole("log");
 		await expect(canvas.getByRole("group", { name: "What's next" })).toBeInTheDocument();
-		await waitFor(() => expect(log.scrollHeight - log.scrollTop - log.clientHeight).toBeLessThan(2));
-		await expect(canvas.getByText("Or ask for something else below.")).toBeVisible();
+		const lastLine = canvas.getByText("Or ask for something else below.");
+		// The message glides to the top first, then the card into view (two glides, about 1.2s).
+		await waitFor(
+			() => expect(lastLine.getBoundingClientRect().bottom).toBeLessThanOrEqual(log.getBoundingClientRect().bottom + 1),
+			{ timeout: 3_000 },
+		);
 	},
 };
 
@@ -378,6 +382,27 @@ export const UnclearMessage: Story = {
 		await userEvent.type(composer, "Translate the store into German{Enter}");
 		await archieFinished(canvas);
 		await expect(unclearReply("Translate the store into German").filter((reply) => reply !== first[0])).toHaveLength(1);
+	},
+};
+
+/**
+ * Sending scrolls the thread so the message sits at the top, and the reply fills in below it.
+ * Test: in a long thread, a sent message ends 16px from the top of the thread (its padding), and stays there while
+ * Archie's reply comes in.
+ */
+export const MessageToTop: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const log = canvas.getByRole("log");
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "What's a database relationship?{Enter}");
+		await archieFinished(canvas);
+		const sent = canvas.getAllByText("What's a database relationship?").at(-1)!.closest<HTMLElement>("[data-thread-item]")!;
+		await waitFor(() => expect(sent.getBoundingClientRect().top - log.getBoundingClientRect().top).toBeCloseTo(16, 0), {
+			timeout: 3_000,
+		});
 	},
 };
 

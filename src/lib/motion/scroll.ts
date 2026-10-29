@@ -31,11 +31,12 @@ function scrollContainerTo(container: HTMLElement, top: number) {
 }
 
 /**
- * Where `container` has to scroll so `element` is fully in view ("nearest": the least movement),
- * honoring the container's `scroll-padding` and the element's `scroll-margin` the way native
- * `scrollIntoView` does. Element taller than the space: its top is aligned.
+ * Where `container` has to scroll so `element` is fully in view ("nearest": the least movement), or
+ * (`align: "start"`) so its top is at the top, honoring the container's `scroll-padding` and the
+ * element's `scroll-margin` the way native `scrollIntoView` does. Element taller than the space: its
+ * top is aligned.
  */
-function scrollTargetFor(element: HTMLElement, container: HTMLElement) {
+function scrollTargetFor(element: HTMLElement, container: HTMLElement, align: "nearest" | "start" = "nearest") {
 	const containerStyle = getComputedStyle(container);
 	const style = getComputedStyle(element);
 	const px = (value: string) => parseFloat(value) || 0;
@@ -48,7 +49,8 @@ function scrollTargetFor(element: HTMLElement, container: HTMLElement) {
 	const viewBottom = view.bottom - px(containerStyle.scrollPaddingBottom);
 
 	let delta = 0;
-	if (bottom > viewBottom) delta = Math.min(bottom - viewBottom, top - viewTop);
+	if (align === "start") delta = top - viewTop;
+	else if (bottom > viewBottom) delta = Math.min(bottom - viewBottom, top - viewTop);
 	else if (top < viewTop) delta = top - viewTop;
 
 	return Math.min(Math.max(view.scrollTop + delta, 0), view.maxScroll);
@@ -62,16 +64,21 @@ function scrollTargetFor(element: HTMLElement, container: HTMLElement) {
  * movement instead of waiting for the layout first. Interruptible: any wheel, touch, pointer or key
  * input from the user stops it, and so does `element` leaving the page.
  * Reduced motion: jumps straight to the target.
+ * `align: "start"` puts the element's top at the top instead (a sent chat message).
  * `onEnd` is called once when the scroll ends: arrived, interrupted or stopped.
  * Returns a function that stops the scroll.
  */
 function scrollIntoViewSmoothly(
 	element: HTMLElement,
-	{ reducedMotion = false, onEnd }: { reducedMotion?: boolean; onEnd?: () => void } = {},
+	{
+		reducedMotion = false,
+		align = "nearest",
+		onEnd,
+	}: { reducedMotion?: boolean; align?: "nearest" | "start"; onEnd?: () => void } = {},
 ) {
 	const container = scrollContainerOf(element);
 	if (reducedMotion) {
-		scrollContainerTo(container, scrollTargetFor(element, container));
+		scrollContainerTo(container, scrollTargetFor(element, container, align));
 		onEnd?.();
 		return () => {};
 	}
@@ -81,21 +88,27 @@ function scrollIntoViewSmoothly(
 		...scrollTransition,
 		onUpdate: (progress) => {
 			if (!element.isConnected) return stop();
-			scrollContainerTo(container, start + (scrollTargetFor(element, container) - start) * progress);
+			scrollContainerTo(container, start + (scrollTargetFor(element, container, align) - start) * progress);
 		},
 	});
 
 	const interruptions = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+	// Input that started the scroll (Enter sending a message) is still being dispatched when it begins: only input
+	// after that interrupts it.
+	const startedAt = performance.now();
+	const interrupt = (event: Event) => {
+		if (event.timeStamp > startedAt) stop();
+	};
 	let ended = false;
 	function stop() {
 		controls.stop();
-		for (const event of interruptions) window.removeEventListener(event, stop);
+		for (const event of interruptions) window.removeEventListener(event, interrupt);
 		if (!ended) {
 			ended = true;
 			onEnd?.();
 		}
 	}
-	for (const event of interruptions) window.addEventListener(event, stop, { passive: true });
+	for (const event of interruptions) window.addEventListener(event, interrupt, { passive: true });
 	controls.then(stop);
 	return stop;
 }
