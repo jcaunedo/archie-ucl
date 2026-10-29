@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { blueprint } from "@/sample-data/road-bike-store";
 
 import { Project } from "./project";
-import { createSampleArchie, garbledReplies } from "./sample-archie";
+import { createSampleArchie, garbledReplies, unclearReplies } from "./sample-archie";
 import {
 	sampleBlueprintReady,
 	sampleNewProject,
@@ -344,7 +344,8 @@ export const VersionHistory: Story = {
 /**
  * Messages Archie can't act on (rule 4).
  * Test: an unreadable message (even one containing a known word, "red") gets one of the playful replies and no options;
- * a clear message the script doesn't know gets "What would you like to do?" with options, and choosing one sends it.
+ * a clear message the script doesn't know gets a plain-text reply that says so and asks for more, with no options; a
+ * second one in a row gets a different reply.
  */
 export const UnclearMessage: Story = {
 	args: {
@@ -359,12 +360,46 @@ export const UnclearMessage: Story = {
 		await expect(garbledReplies.some(({ text }) => log.includes(text))).toBe(true);
 		await expect(canvas.queryByRole("group", { name: "What would you like to do?" })).not.toBeInTheDocument();
 
+		// One of the plain-text replies (a short message can be quoted back in it).
+		const unclearReply = (message: string) => {
+			const replies = unclearReplies.map(({ text }) => text(`"${message}"`));
+			const text = canvas.getByRole("log").textContent ?? "";
+			return replies.filter((reply) => text.includes(reply));
+		};
 		await userEvent.type(composer, "Translate the store into French{Enter}");
 		await archieFinished(canvas);
-		await expect(canvas.getByRole("log")).toHaveTextContent("I'm not sure what you mean.");
-		await userEvent.click(option(canvas, "Ask about my app"));
+		const first = unclearReply("Translate the store into French");
+		await expect(first).toHaveLength(1);
+		// Plain text: no question with options, and no guessed meanings.
+		await expect(canvas.queryByRole("group", { name: "What would you like to do?" })).not.toBeInTheDocument();
+		await expect(canvas.queryByRole("button", { name: /Ask about my app$/ })).not.toBeInTheDocument();
+
+		// Another one in a row: a different reply.
+		await userEvent.type(composer, "Translate the store into German{Enter}");
 		await archieFinished(canvas);
-		await expect(canvas.getByRole("log")).toHaveTextContent("How does the fit check work?");
+		await expect(unclearReply("Translate the store into German").filter((reply) => reply !== first[0])).toHaveLength(1);
+	},
+};
+
+/**
+ * A question about one part of the blueprint gets its details, from the blueprint itself (rule 4: nothing invented).
+ * Test: "give me the details of the Storefront" answers with its description, what it does and who it's for, in plain
+ * text with no options.
+ */
+export const BlueprintDetails: Story = {
+	args: {
+		data: sampleBlueprintReady,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const storefront = blueprint.modules.find(({ id }) => id === "storefront")!;
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "give me the details of the Storefront{Enter}");
+		await archieFinished(canvas);
+		const log = canvas.getByRole("log");
+		await expect(log).toHaveTextContent(storefront.description.slice(0, 60));
+		await expect(log).toHaveTextContent("What it does");
+		await expect(log).toHaveTextContent("Who it's for");
+		await expect(log).not.toHaveTextContent("I'm not sure what you mean");
 	},
 };
 
@@ -525,7 +560,7 @@ export const ArchieReplies: Story = {
 
 /**
  * Talk to the sample Archie at a readable pace. It answers the opening request on load, then each message you send. It
- * knows the road bike store script (prds/chat-behavior-system.md §7); anything else gets a clarifying question.
+ * knows the road bike store script (prds/chat-behavior-system.md §7); anything else gets a plain reply asking for more.
  */
 export const Conversation: Story = {
 	args: {

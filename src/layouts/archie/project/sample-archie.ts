@@ -800,20 +800,106 @@ function garbled(memory: Memory, stage: ProjectStage): Step[] {
 	return [wait(0, { type: "status", label: "Thinking…" }), wait(700, { type: "text", text: "" }), ...say(reply), wait(0, { type: "done" })];
 }
 
+/** "Details of…", "tell me about…", "what is…": the message asks for information, not a change. */
+const asksForDetails =
+	/\b(details?|tell me (more )?about|more about|what('s| is| are| does)|explain|describe|show me|info(rmation)?|overview of)\b/i;
+
+/** Names as people type them: lowercase, "&" read as "and". */
+const plain = (text: string) => text.toLowerCase().replace(/&/g, "and");
+
+/** The blueprint item a message names (a module, user type, core service or integration), if it names one. */
+function itemIn(text: string) {
+	const message = plain(text);
+	const named = <T extends { name: string }>(items: T[]) => items.find(({ name }) => message.includes(plain(name)));
+	const module = named(blueprint.modules);
+	if (module) return { kind: "module" as const, item: module };
+	const userType = named(blueprint.userTypes);
+	if (userType) return { kind: "user type" as const, item: userType };
+	const service = named(blueprint.coreServices);
+	if (service) return { kind: "core service" as const, item: service };
+	const integration = named(blueprint.integrations);
+	if (integration) return { kind: "integration" as const, item: integration };
+	return undefined;
+}
+
+const nameOf = (id: string) =>
+	[...blueprint.modules, ...blueprint.userTypes, ...blueprint.coreServices].find((item) => item.id === id)?.name ?? id;
+
 /**
- * A clear message the script doesn't know: Archie asks what the person wants, with options that exist at this stage,
- * not a guess (rule 4). Before a blueprint there's nothing to offer yet, so it asks what to build.
+ * The details of one part of the blueprint, as Plan holds them: what it is, what it does, who it's for and why it's in
+ * the blueprint. Only what the blueprint says, nothing added (rule 4). Plain text, ending with where to change it.
  */
-function unclear(stage: ProjectStage): Step[] {
-	if (stage.built) {
-		return ask("I'm not sure what you mean.", "What would you like to do?", ["Change the design", "Add a feature", "Ask about my app"]);
+function itemDetails({ kind, item }: NonNullable<ReturnType<typeof itemIn>>): Step[] {
+	const where = { module: "Modules", "user type": "User Types", "core service": "Core Services", integration: "Integrations" }[kind];
+	let body: string;
+	if (kind === "module") {
+		body = `${item.description}
+
+**What it does**
+
+${item.capabilities.map((capability) => `- ${capability}`).join("\n")}
+
+**Who it's for:** ${item.audience.map(nameOf).join(", ")}
+
+**Why it's in the blueprint:** ${item.rationale}`;
+	} else if (kind === "user type") {
+		const modules = blueprint.modules.filter(({ audience }) => audience.includes(item.id));
+		body = `${item.description}
+
+**Software proficiency:** ${item.proficiency}. **Devices:** ${item.devices.join(", ")}.
+
+**Modules built for them:** ${modules.length > 0 ? list(modules) : "none yet"}
+
+**Why it's in the blueprint:** ${item.rationale}`;
+	} else if (kind === "core service") {
+		body = `${item.description}
+
+**Why it's in the blueprint:** ${item.rationale}`;
+	} else {
+		body = `${item.purpose}
+
+**Used by:** ${item.usedBy.map(nameOf).join(", ")}
+
+**Why it's in the blueprint:** ${item.rationale}`;
 	}
-	if (stage.blueprint) {
-		return ask("I'm not sure what you mean.", "What would you like to do?", [
-			"Refine the blueprint",
-			"Generate Prototype",
-			"Ask about my app",
-		]);
+	return answer(`**${item.name}** (${kind})
+
+${body}
+
+You can edit it in Plan, under ${where}, or tell me here what to change.`);
+}
+
+/**
+ * What Archie says to a clear message it can't place, in plain text: never a question with options, never a guess
+ * (rule 4, decision 2026-10-29). Several ways to say it, so it doesn't repeat itself; `again` when the message before
+ * wasn't clear either. `quote` puts a short message back in the reply, so the person sees what Archie couldn't place.
+ */
+const unclearReplies: { text: (quote: string) => string; again?: boolean; quotes?: boolean }[] = [
+	{ text: () => "I'm not sure what you mean, and I'd rather not guess. Could you tell me a bit more about what you'd like to do?" },
+	{ text: (quote) => `I couldn't place ${quote} in your project. Could you say a little more about what you have in mind?`, quotes: true },
+	{ text: () => "I don't want to get this wrong. Can you say it another way, or add a bit more detail?" },
+	{ text: () => "I'm missing something here. Could you describe what you're after in a sentence or two?" },
+	{ text: () => "Sorry, I still can't tell what you'd like. Could you describe it in a full sentence?", again: true },
+	{ text: (quote) => `I'm still not following ${quote}. What would you like to happen?`, again: true, quotes: true },
+	{ text: () => "I still don't want to guess. What's the result you're hoping for?", again: true },
+];
+
+/**
+ * A clear message the script doesn't know: Archie says so in plain text and asks the person to say more, a different
+ * way each time (`unclearReplies`). Before a blueprint, it asks what to build.
+ */
+function unclear(stage: ProjectStage, memory: Memory, text: string): Step[] {
+	if (stage.blueprint || stage.built) {
+		const again = (memory.unclearStreak ?? 0) > 1;
+		// Quote the message only when it's short enough to read back on one line.
+		const short = text.trim().length <= 40 && !text.includes("\n");
+		const choices = unclearReplies
+			.filter((reply) => Boolean(reply.again) === again && (short || !reply.quotes))
+			.map((reply) => reply.text(`"${text.trim()}"`))
+			.filter((reply) => reply !== memory.lastUnclear);
+		const reply = choices[Math.floor(Math.random() * choices.length)];
+		memory.lastUnclear = reply;
+		return answer(reply);
 	}
 	return answer(
 		"I'm not sure what you mean. Tell me what you'd like to build, like \"An online store for road bike accessories\", and I'll draft its blueprint.",
@@ -911,6 +997,10 @@ type Memory = {
 	pendingAnswers?: { answers: string[]; index: number };
 	/** The last reply to an unreadable message, so the next one differs. */
 	lastGarbled?: string;
+	/** The last reply to a message Archie couldn't place, so the next one differs. */
+	lastUnclear?: string;
+	/** How many messages in a row Archie couldn't place, this one included. */
+	unclearStreak?: number;
 };
 
 /** Asks again about the one answer Archie couldn't read, with that question's options (rule 4). */
@@ -931,6 +1021,9 @@ function reaskAnswer(index: number, again: boolean): Step[] {
  * Unreadable messages and answers get a clarifying question first (rule 4).
  */
 function stepsFor(request: ArchieRequest, memory: Memory = {}): Step[] {
+	// Messages in a row Archie couldn't place: any other reply ends the streak.
+	const streak = memory.unclearStreak ?? 0;
+	memory.unclearStreak = 0;
 	if (request.kind === "restore") {
 		return restore(request.version, request.current);
 	}
@@ -972,9 +1065,15 @@ function stepsFor(request: ArchieRequest, memory: Memory = {}): Step[] {
 	if (stage.error && errorQuestion.test(text)) {
 		return explainError(stage.error);
 	}
+	// "Give me the details of the Storefront": a question about a part of the blueprint gets that part's details.
+	const named = asksForDetails.test(text) ? itemIn(text) : undefined;
+	if (named) {
+		return stage.blueprint ? itemDetails(named) : notYet(stage);
+	}
 	const turn = sampleTurns.find(({ match }) => match.test(text));
 	if (!turn) {
-		return unclear(stage);
+		memory.unclearStreak = streak + 1;
+		return unclear(stage, memory, text);
 	}
 	if ((turn.needs === "blueprint" && !stage.blueprint) || (turn.needs === "built" && !stage.built)) {
 		return notYet(stage);
@@ -997,4 +1096,4 @@ function createSampleArchie({ pace = 1 }: SampleArchieOptions = {}): ArchieRespo
 	};
 }
 
-export { createSampleArchie, garbledReplies, stepsFor, type Step };
+export { createSampleArchie, garbledReplies, stepsFor, unclearReplies, type Step };

@@ -46,7 +46,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 
 | Situation | Archie… | Progress PRD level |
 | --- | --- | --- |
-| The message is unclear | Says plainly that it isn't sure what the person means, without blaming them. Offers the likely meanings as options, and typing it another way. Never builds or changes anything from an unclear message | Level 1 |
+| The message is unclear | Says plainly, in regular text, that it isn't sure what the person means, without blaming them, and asks them to say more. No question with answer options, and no guessed meanings: when it doesn't understand, it doesn't invent an answer (decision 2026-10-29). Never builds or changes anything from an unclear message | Level 1 |
 | How to refine the blueprint ("how do I update my user types?", "refine my specs") | Answers in detail: where that part lives in Plan, how to edit it there (open an item's details, + to add, × to remove, the sparkle to redraft) or here in the chat, then the order to review the blueprint in before generating (description, user types, modules, core services, integrations), and suggests a prototype first. Ends with what's next | Level 1 |
 | A question it can answer | Answers directly. "Thinking…" only if the answer doesn't start at once, then streams | Level 1 |
 | The request leaves decisions open | Drafts the blueprint straight away (the default, as in production), choosing a common setup for what's open and saying which, so the person can change it in Plan or the chat. The "Clarification questions" preview interaction asks first instead: one question at a time, each with options and "You decide". When the person chooses "You decide", Archie picks a sensible default and says which | Level 2 |
@@ -124,7 +124,8 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 3. **Questions before the blueprint.** For a new app, Archie asks up to four questions, one at a time. Each has options, "You decide" (Archie picks a default) and a free answer (typed in the composer). Typing just an option's letter ("b", "B.", "b)") picks that option, the same as clicking it; a letter past the last option stays a typed answer. When the last is answered, the answers go as one person message, and Archie drafts the blueprint. Answers can be changed at any point (rule 13).
 4. **Unclear input gets a question, not a guess.** Archie asks when a message is:
    - **Not understandable** (random keys, a fragment): no options. A short, playful reply that asks again, with a hint of what to send, often with a nod to the project ("That one slipped its chain. Say it another way, and we'll get rolling again."). It changes every time, never the same twice in a row, and never blames the person (DESIGN.md "Brand voice", playful exception).
-   - **Clear, but not something Archie can place:** "I'm not sure what you mean. What would you like to do?", with options such as "Change the design", "Add a feature", "Ask about my app".
+   - **Clear, but not something Archie can place:** a plain-text reply that says so and asks for more ("I'm not sure what you mean, and I'd rather not guess. Could you tell me a bit more about what you'd like to do?"). No question with options and no suggested meanings. It says it differently each time, never the same reply twice in a row, and a second unclear message in a row gets a "still not following" reply; a short message can be quoted back (decision 2026-10-29).
+   - **A question about a part of the blueprint** ("give me the details of the Storefront"): Archie answers with that part's details from the blueprint (what it is, what it does, who it's for, why it's there), in plain text, and says where to change it. Nothing beyond what the blueprint holds.
    - **Too vague to act on** ("make it better"): "I can improve a few things. Which one do you mean?", with the parts that apply to this app ("The visual design", "Product pages", "Checkout").
    - **Open to two readings that lead to different changes** ("remove the cart"): "Do you want to remove the cart icon from the header, or remove the cart and checkout entirely?" When one reading removes something, the question says so.
 
@@ -166,7 +167,7 @@ The sample responder plays these turns. Statuses follow the progress PRD's FR-03
 | 10 | "remove the cart" | "Do you want to remove the cart icon from the header, or remove the cart and checkout entirely?" with both as options. Choosing to remove both brings an approval prompt ("Ask permission", Deny / Allow) |
 | 11 | In the clarification questions flow, an answer typed as "sdkfj" | After the last answer: "Thanks. I couldn't read your answer to question 2, so I've kept the others." and that question again with its options. A clear answer, then the blueprint |
 
-ℹ️ A clear message the script doesn't recognize gets the "What would you like to do?" question with options, not a canned "I can't do that", so the sample behaves like the real rule.
+ℹ️ A clear message the script doesn't recognize gets a plain-text reply asking for more, never a question with options or a guessed answer, so the sample behaves like the real rule.
 
 ## 8. Implementation handoff
 
