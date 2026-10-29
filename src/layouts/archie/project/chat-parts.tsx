@@ -43,7 +43,7 @@ import {
 } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
-import { currentQuestion, youDecide, type ArchieBlock, type ClarifyingQuestion, type StepState } from "./chat-model";
+import { currentQuestion, youDecide, type ArchieBlock, type NextStep, type ClarifyingQuestion, type StepState } from "./chat-model";
 
 // Layout-only chat parts (prds/chat-behavior-system.md §4): Figma Archie-App "Chat Experience" isn't a design-system
 // file, so these live here until archie.ds has them (ARCHITECTURE.md "Layout-only parts"). Each takes its block's data
@@ -571,10 +571,11 @@ function ProgressLine({ block }: { block: Block<"progress"> }) {
 }
 
 /**
- * "What's next" (Follow-up Chips, Suggest / Confirm / Execute): after Archie's update, the next steps as one card. The
- * recommended step comes first; each row says what it produces, and choosing one sends it as the person's
- * message. Once a step is chosen, or the conversation moves on, the card locks; the chosen row keeps a check. Not in
- * Figma: decision 2026-10-29 (prds/chat-behavior-system.md rule 10).
+ * "What's next" (Follow-up Chips, Suggest / Confirm / Execute): after Archie's update, the next steps as one card, in
+ * Archie's order (blueprint sections to review first, then building). Each row says what it produces. A row with `open`
+ * opens that blueprint section in Plan and stays available; any other row sends its label as the person's message, and
+ * then the card locks with a check on the choice (it also locks once the conversation moves on). Not in Figma: decision
+ * 2026-10-29 (prds/chat-behavior-system.md rule 10).
  */
 function NextSteps({
 	block,
@@ -583,11 +584,11 @@ function NextSteps({
 }: {
 	block: Block<"actions">;
 	locked?: boolean;
-	onChoose: (step: string) => void;
+	onChoose: (step: NextStep) => void;
 }) {
 	const id = useId();
 	const locked = lockedProp || block.chosen !== undefined;
-	const steps = [...block.steps].sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)));
+	const steps = block.steps;
 
 	return (
 		<div className='flex flex-col gap-1.5'>
@@ -602,19 +603,21 @@ function NextSteps({
 				<div className='flex flex-col divide-y divide-border'>
 					{steps.map((step, index) => {
 						const chosen = block.chosen === step.label;
+						// Opening a section in Plan sends nothing, so it never locks.
+						const rowLocked = locked && !step.open;
 						return (
 							<button
 								key={step.label}
 								type='button'
 								aria-label={step.label}
 								aria-describedby={step.description ? `${id}-${index}` : undefined}
-								aria-disabled={locked || undefined}
+								aria-disabled={rowLocked || undefined}
 								aria-pressed={chosen || undefined}
-								onClick={() => !locked && onChoose(step.label)}
+								onClick={() => !rowLocked && onChoose(step)}
 								className={cn(
 									"group flex items-center gap-3 px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-									!locked && "hover:bg-accent",
-									locked && !chosen && "opacity-60",
+									!rowLocked && "hover:bg-accent",
+									rowLocked && !chosen && "opacity-60",
 								)}
 							>
 								<span className='flex min-w-0 flex-1 flex-col gap-0.5'>
@@ -632,7 +635,7 @@ function NextSteps({
 										aria-hidden
 										className={cn(
 											"size-4 shrink-0 text-icon-muted transition-transform",
-											!locked && "group-hover:translate-x-0.5 group-hover:text-icon",
+											!rowLocked && "group-hover:translate-x-0.5 group-hover:text-icon",
 										)}
 									/>
 								)}

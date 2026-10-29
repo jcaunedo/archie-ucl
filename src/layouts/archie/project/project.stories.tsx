@@ -225,17 +225,25 @@ export const BeforeBuilding: Story = {
 
 /**
  * The blueprint is drafted: Plan is full and Archie proposes two ways to build (rule 5).
- * Test: Plan lists every module; choosing Generate Prototype builds Version 1 and ends with a "What's next" card.
+ * Test: Plan lists every module; "Review modules" opens Plan on that section, highlighted; choosing Generate Prototype
+ * builds Version 1 and ends with a "What's next" card.
  */
 export const BlueprintReady: Story = {
 	args: {
 		data: sampleBlueprintReady,
 		respond: createSampleArchie({ pace: 0 }),
 	},
-	play: async ({ canvas, userEvent }) => {
+	play: async ({ canvas, canvasElement, userEvent }) => {
 		for (const module of blueprint.modules) {
 			await expect(canvas.getByText(module.name)).toBeInTheDocument();
 		}
+		// Reviewing a section opens it in Plan, highlighted, and sends nothing: the card stays open.
+		await userEvent.click(canvas.getByRole("tab", { name: "Design" }));
+		await userEvent.click(canvas.getByRole("button", { name: "Review modules" }));
+		await expect(canvas.getByRole("heading", { level: 1 })).toHaveTextContent("Plan");
+		await waitFor(() =>
+			expect(canvasElement.querySelector("[data-plan-section='modules']")).toHaveAttribute("data-highlighted", "true"),
+		);
 		await userEvent.click(canvas.getByRole("button", { name: "Generate Prototype" }));
 		await archieFinished(canvas);
 		await expect(canvas.getByText("Current version")).toBeInTheDocument();

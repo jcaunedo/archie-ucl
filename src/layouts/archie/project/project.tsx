@@ -47,7 +47,9 @@ import {
 	type ArchieRequest,
 	type ArchieResponder,
 	type ArchieTurn,
+	type BlueprintSection,
 	type ClarifyingQuestion,
+	type NextStep,
 	type ThreadItem,
 } from "./chat-model";
 import {
@@ -160,7 +162,7 @@ function ArchieTurnView({
 	onAnswer: (block: Extract<ArchieBlock, { kind: "questions" }>, answer: string) => void;
 	/** Starts changing an answered question, or (`undefined`) keeps its answer. */
 	onEditAnswer: (blockId: string, index: number | undefined) => void;
-	onChoose: (blockId: string, option: string) => void;
+	onChoose: (blockId: string, step: NextStep) => void;
 	/** Allow or Deny on an approval prompt: records the decision and sends its message. */
 	onDecide: (blockId: string, choice: "allow" | "deny", message: string) => void;
 	onRetry: (blockId: string, message: string) => void;
@@ -257,6 +259,8 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 	const [queue, setQueue] = useState<string[]>([]);
 	const [plan, setPlan] = useState({ revealed: data.planRevealed ?? 0, drafting: false });
 	const [credits, setCredits] = useState(data.credits);
+	/** The Plan section the chat last asked to open ("Review modules"). */
+	const [planFocus, setPlanFocus] = useState<{ section: BlueprintSection; at: number }>();
 	const stopAnswering = useRef<(() => void) | null>(null);
 	const activeTurn = useRef<string | null>(null);
 	const phaseLabel = phases.find(({ value }) => value === phase)?.label;
@@ -458,9 +462,15 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 										onEditAnswer={(blockId, answerIndex) =>
 											setThread((current) => editQuestion(current, blockId, answerIndex))
 										}
-										onChoose={(blockId, option) => {
-											setThread((current) => settleBlock(current, blockId, option));
-											send(option);
+										onChoose={(blockId, step) => {
+											// A blueprint section opens in Plan; anything else is sent as the person's message.
+											if (step.open) {
+												setPhase("plan");
+												setPlanFocus({ section: step.open, at: Date.now() });
+												return;
+											}
+											setThread((current) => settleBlock(current, blockId, step.label));
+											send(step.label);
 										}}
 										onDecide={(blockId, choice, message) => {
 											setThread((current) => settleBlock(current, blockId, choice));
@@ -529,7 +539,7 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 						</header>
 						<div className='min-h-0 flex-1 overflow-y-auto bg-background'>
 							{phase === "plan" && (
-								<PlanCanvas blueprint={data.blueprint} revealed={plan.revealed} drafting={plan.drafting} />
+								<PlanCanvas blueprint={data.blueprint} revealed={plan.revealed} drafting={plan.drafting} focus={planFocus} />
 							)}
 						</div>
 					</main>

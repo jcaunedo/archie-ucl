@@ -9,11 +9,14 @@ type FileChange = { path: string; change: "new" | "modified" };
 /** A question with its options. `dependsOn`: the earlier questions (by index) whose answers decide this one. */
 type ClarifyingQuestion = { question: string; options: string[]; dependsOn?: number[] };
 
+/** The parts of the blueprint Plan shows, in its order. */
+type BlueprintSection = "user-types" | "modules" | "core-services" | "integrations";
+
 /**
- * Something the person can do next: its label (sent as their message when chosen), what it produces, and whether it's
- * Archie's recommendation (at most one per card).
+ * Something the person can do next: its label, what it produces, and whether it's Archie's recommendation. Choosing it
+ * sends the label as the person's message, or, with `open`, opens that blueprint section in Plan instead (no message).
  */
-type NextStep = { label: string; description?: string; recommended?: boolean };
+type NextStep = { label: string; description?: string; recommended?: boolean; open?: BlueprintSection };
 
 type ArchieBlock =
 	| { kind: "text"; id: string; text: string }
@@ -500,6 +503,7 @@ export {
 	type ArchieRequest,
 	type ArchieResponder,
 	type ArchieTurn,
+	type BlueprintSection,
 	type ClarifyingQuestion,
 	type FileChange,
 	type NextStep,

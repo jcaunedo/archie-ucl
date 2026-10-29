@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
 	Bell,
 	Bike,
@@ -19,7 +19,10 @@ import {
 import { motion } from "motion/react";
 
 import { Typography } from "@/components/typography";
-import { pendingSurfaceVariants, revealVariants, useMotionPreference } from "@/lib/motion";
+import { pendingSurfaceVariants, revealVariants, scrollIntoViewSmoothly, useMotionPreference } from "@/lib/motion";
+import { cn } from "@/lib/utils";
+
+import type { BlueprintSection } from "./chat-model";
 
 // Layout-only (prds/chat-behavior-system.md §4 "Plan canvas"): the blueprint as Plan shows it, after the Eight Count
 // references. It fills in section by section as Archie drafts it, with skeletons for the sections still to come
@@ -85,11 +88,29 @@ function SectionSkeleton() {
 	);
 }
 
-function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function Section({
+	id,
+	highlighted,
+	title,
+	description,
+	children,
+}: {
+	id: BlueprintSection;
+	highlighted: boolean;
+	title: string;
+	description: string;
+	children: ReactNode;
+}) {
 	const { prefersReducedMotion } = useMotionPreference();
 	return (
 		<motion.section
-			className='flex flex-col gap-3 border-t border-border pt-6'
+			data-plan-section={id}
+			data-highlighted={highlighted || undefined}
+			// Opened from the chat ("Review user types"): a soft ring for a moment, so the eye lands on it.
+			className={cn(
+				"flex scroll-mt-6 flex-col gap-3 rounded-lg border-t border-border pt-6 ring-offset-8 ring-offset-background transition-shadow duration-500",
+				highlighted && "ring-2 ring-ring/40",
+			)}
 			variants={revealVariants}
 			initial={prefersReducedMotion ? false : "initial"}
 			animate='animate'
@@ -119,7 +140,42 @@ function Count({ label, value }: { label: string; value: number }) {
  * sections Archie has drafted (0 to 5); while `drafting`, the rest show as skeletons. Nothing drafted and not drafting
  * is the empty state.
  */
-function PlanCanvas({ blueprint, revealed, drafting }: { blueprint: PlanBlueprint; revealed: number; drafting: boolean }) {
+function PlanCanvas({
+	blueprint,
+	revealed,
+	drafting,
+	focus,
+}: {
+	blueprint: PlanBlueprint;
+	revealed: number;
+	drafting: boolean;
+	/**
+	 * A section to bring into view and highlight briefly, from the chat's "What's next" ("Review modules"). `at` makes
+	 * the same section open again. ⚠️ Next: open the section's first item in edit mode (its detail panel, not built yet).
+	 */
+	focus?: { section: BlueprintSection; at: number };
+}) {
+	const root = useRef<HTMLDivElement>(null);
+	const [highlighted, setHighlighted] = useState<BlueprintSection | null>(null);
+	const { prefersReducedMotion } = useMotionPreference();
+
+	useEffect(() => {
+		if (!focus) {
+			return;
+		}
+		const section = root.current?.querySelector<HTMLElement>(`[data-plan-section="${focus.section}"]`);
+		if (!section) {
+			return;
+		}
+		const stop = scrollIntoViewSmoothly(section, { reducedMotion: Boolean(prefersReducedMotion) });
+		setHighlighted(focus.section);
+		const timer = setTimeout(() => setHighlighted(null), 1600);
+		return () => {
+			stop();
+			clearTimeout(timer);
+		};
+	}, [focus?.at]);
+
 	if (revealed === 0 && !drafting) {
 		return (
 			<div className='flex h-full flex-col items-center justify-center gap-2 p-8 text-center'>
@@ -134,12 +190,12 @@ function PlanCanvas({ blueprint, revealed, drafting }: { blueprint: PlanBlueprin
 	}
 
 	const sections = [
-		<Section key='user-types' title='User types' description='Who your product is built for.'>
+		<Section key='user-types' id='user-types' highlighted={highlighted === 'user-types'} title='User types' description='Who your product is built for.'>
 			{blueprint.userTypes.map((userType) => (
 				<Chip key={userType.id}>{userType.name}</Chip>
 			))}
 		</Section>,
-		<Section key='modules' title='Modules' description='Your application, organized into independent, functional areas.'>
+		<Section key='modules' id='modules' highlighted={highlighted === 'modules'} title='Modules' description='Your application, organized into independent, functional areas.'>
 			{blueprint.modules.map((module) => {
 				const Icon = icons[module.icon] ?? Box;
 				return (
@@ -149,7 +205,7 @@ function PlanCanvas({ blueprint, revealed, drafting }: { blueprint: PlanBlueprin
 				);
 			})}
 		</Section>,
-		<Section key='core-services' title='Core services' description='The foundational capabilities of your application.'>
+		<Section key='core-services' id='core-services' highlighted={highlighted === 'core-services'} title='Core services' description='The foundational capabilities of your application.'>
 			{blueprint.coreServices.map((service) => {
 				const Icon = icons[service.icon] ?? Box;
 				return (
@@ -159,7 +215,7 @@ function PlanCanvas({ blueprint, revealed, drafting }: { blueprint: PlanBlueprin
 				);
 			})}
 		</Section>,
-		<Section key='integrations' title='Integrations' description='External services your application connects to.'>
+		<Section key='integrations' id='integrations' highlighted={highlighted === 'integrations'} title='Integrations' description='External services your application connects to.'>
 			{blueprint.integrations.map((integration) => (
 				<Chip
 					key={integration.id}
@@ -178,7 +234,7 @@ function PlanCanvas({ blueprint, revealed, drafting }: { blueprint: PlanBlueprin
 	const pending = drafting ? sections.length - shown.length : 0;
 
 	return (
-		<div aria-busy={drafting || undefined} className='mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-6'>
+		<div ref={root} aria-busy={drafting || undefined} className='mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-6'>
 			{revealed >= 1 ? (
 				<motion.div className='flex flex-col gap-4' variants={revealVariants} initial='initial' animate='animate'>
 					<div className='flex flex-col gap-1'>

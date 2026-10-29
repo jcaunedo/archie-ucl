@@ -43,6 +43,7 @@ const nextSteps = {
 
 const recommend = (step: NextStep): NextStep => ({ ...step, recommended: true });
 
+
 /** Streams a file into the files block line by line. */
 const write = (id: string, path: string, code: string): Step[] => [
 	wait(120, { type: "writing", id, path }),
@@ -56,6 +57,23 @@ const modified = (...paths: string[]): FileChange[] => paths.map((path) => ({ pa
 
 const list = (items: { name: string }[]) =>
 	items.length > 1 ? `${items.slice(0, -1).map(({ name }) => name).join(", ")} and ${items.at(-1)!.name}` : items[0].name;
+
+/** A few names, then how many more: "Storefront, Catalog, My Garage and 4 more". */
+const brief = (items: { name: string }[], max = 3) =>
+	items.length > max
+		? `${items
+				.slice(0, max)
+				.map(({ name }) => name)
+				.join(", ")} and ${items.length - max} more`
+		: list(items);
+
+/** The blueprint's sections to review before building; each opens in Plan (no message). */
+const reviewSteps: NextStep[] = [
+	{ label: "Review user types", description: brief(blueprint.userTypes, 4), open: "user-types" },
+	{ label: "Review modules", description: brief(blueprint.modules), open: "modules" },
+	{ label: "Review core services", description: brief(blueprint.coreServices, 2), open: "core-services" },
+	{ label: "Review integrations", description: brief(blueprint.integrations), open: "integrations" },
+];
 
 /* -------------------------------------------------------------------------- */
 /* Sample content                                                             */
@@ -192,7 +210,7 @@ ${blueprint.name} sells its own stock from one warehouse to the US and Canada, w
 - **${blueprint.integrations.length} integrations:** ${list(blueprint.integrations)}
 
 Review and edit it in Plan, or start building. A prototype is the quickest way to see it working.`),
-	next([nextSteps.prototype, nextSteps.fullStack]),
+	next([...reviewSteps, nextSteps.prototype, nextSteps.fullStack]),
 	wait(0, { type: "done" }),
 ];
 
@@ -402,7 +420,7 @@ function refineGuide(text: string): Step[] {
 5. **Integrations:** confirm ${list(blueprint.integrations)}.
 
 Changes are quick now and take longer once there's code. When it looks right, start with a prototype: it's the fastest way to check the flows.`),
-		next([nextSteps.prototype, nextSteps.fullStack]),
+		next([...reviewSteps, nextSteps.prototype, nextSteps.fullStack]),
 		wait(0, { type: "done" }),
 	];
 }
@@ -744,11 +762,7 @@ function notYet(stage: ProjectStage): Step[] {
 			...say(
 				"Nothing's been generated yet, so there's no design or code to change. You can shape this in the blueprint now, or generate the app first and then change it.",
 			),
-			next([
-				{ label: "Refine the blueprint", description: "See how to review and edit it in Plan", recommended: true },
-				nextSteps.prototype,
-				nextSteps.fullStack,
-			]),
+			next([...reviewSteps, nextSteps.prototype, nextSteps.fullStack]),
 			wait(0, { type: "done" }),
 		];
 	}

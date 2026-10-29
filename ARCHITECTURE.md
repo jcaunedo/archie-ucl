@@ -46,6 +46,7 @@ State, all in `Project`:
 - `queue`: messages sent while Archie works. Each shows in the thread with a remove button; the next one goes when the turn ends or is stopped.
 - `plan`: how many Plan sections are drafted (`revealed`, 0 to 5) and whether Archie is still drafting. Seeded from `data.planRevealed`.
 - `credits`: the balance in the topbar, lowered by each build's credits.
+- `planFocus`: the Plan section a "What's next" review row asked to open (`NextStep.open`). Choosing one switches to Plan; `PlanCanvas` scrolls the section into view and rings it briefly. Next: open its first item in edit mode.
 - Answers messages keep their questions and values (`PersonMessage.answers`), so they expand to show their questions.
 - The chat's open state lives in `ChatPanel` (uncontrolled, `defaultChatOpen`). The thread follows the newest content unless the person has scrolled up; sending pins it to the end again.
 
