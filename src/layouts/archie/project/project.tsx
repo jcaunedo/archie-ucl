@@ -56,6 +56,7 @@ import {
 	AnswersMessage,
 	ArchieText,
 	DaySeparator,
+	ElapsedTime,
 	ErrorCard,
 	FilesProcessed,
 	Note,
@@ -221,7 +222,10 @@ function ArchieTurnView({
 			})}
 			{turn.status && (
 				<div className='flex flex-col gap-2'>
-					<ActivityIndicator>{turn.status}</ActivityIndicator>
+					<div className='flex min-w-0 items-center gap-1.5'>
+						<ActivityIndicator>{turn.status}</ActivityIndicator>
+						<ElapsedTime since={turn.startedAt} />
+					</div>
 					{turn.feed.length > 0 && <ActivityFeed steps={turn.feed} />}
 				</div>
 			)}

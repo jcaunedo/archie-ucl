@@ -112,13 +112,15 @@ function SegmentedControlTrigger({
 		>
 			{isSelected && (
 				// Connect pattern (MOTION.md "Tabs"): one indicator per control, shared through `layoutId`, glides to the newly
-				// selected trigger. Figma's selected fill: `tone/neutral/neutral`, a pill.
+				// selected trigger. Figma's selected fill (update 2026-10-29): a subtle top-to-bottom gradient into
+				// `tone/neutral/neutral`. Figma's top stop is raw #626262; here it's `neutral` mixed 24% with white, the same
+				// lightness, so it stays on the token and follows dark mode (DESIGN.md "Segmented Control").
 				<motion.span
 					aria-hidden
 					data-slot='segmented-control-indicator'
 					layoutId={`${context.indicatorId}-indicator`}
 					transition={resolve(layoutSpring)}
-					className='absolute inset-0 z-10 rounded-full bg-neutral'
+					className='absolute inset-0 z-10 rounded-full bg-neutral bg-linear-to-b from-[color-mix(in_oklab,var(--neutral)_76%,white)] to-neutral'
 				/>
 			)}
 			<span

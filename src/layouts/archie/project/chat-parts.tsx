@@ -222,6 +222,31 @@ function ArchieText({ text }: { text: string }) {
 /* Blocks                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/** A duration as Archie shows it: "12s" under a minute, "1m 05s" from there. */
+function formatDuration(seconds: number) {
+	const minutes = Math.floor(seconds / 60);
+	const rest = seconds % 60;
+	return minutes > 0 ? `${minutes}m ${String(rest).padStart(2, "0")}s` : `${rest}s`;
+}
+
+/**
+ * How long Archie has been working on this turn, after its live status ("· 1m 05s"), ticking each second from the
+ * turn's start. Hidden from screen readers: a value changing every second shouldn't be announced.
+ */
+function ElapsedTime({ since }: { since: number }) {
+	const [now, setNow] = useState(() => Date.now());
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), 1000);
+		return () => clearInterval(timer);
+	}, []);
+
+	return (
+		<span aria-hidden data-slot='elapsed-time' className='shrink-0 text-sm text-muted-foreground tabular-nums'>
+			· {formatDuration(Math.max(0, Math.floor((now - since) / 1000)))}
+		</span>
+	);
+}
+
 /** The live feed shows this many steps at most (decision 2026-10-29); older ones slide out at the top. */
 const feedSize = 2;
 
@@ -275,7 +300,7 @@ function ThoughtDisclosure({ block }: { block: Block<"thought"> }) {
 	return (
 		<Disclosure
 			icon={<ActivityIndicatorIcon animate={false} className='text-icon-muted' />}
-			label={`Thought for ${block.seconds}s`}
+			label={`Thought for ${formatDuration(block.seconds)}`}
 		>
 			<ul className='flex flex-col gap-1 border-l border-border pl-3 text-sm text-muted-foreground'>
 				{block.steps.map((step) => (
@@ -530,7 +555,7 @@ function ProgressLine({ block }: { block: Block<"progress"> }) {
 		block.state === "running"
 			? block.label
 			: block.state === "done"
-				? `${block.doneLabel} · ${block.seconds}s`
+				? `${block.doneLabel} · ${formatDuration(block.seconds ?? 0)}`
 				: block.state === "failed"
 					? block.failedLabel
 					: `${block.label.replace(/…$/, "")}: stopped`;
@@ -647,7 +672,7 @@ function FilesProcessed({ block, onViewCode }: { block: Block<"files">; onViewCo
 		>
 			<div className='flex flex-col gap-2'>
 				<p className='text-xs text-muted-foreground'>
-					Worked for {block.seconds}s{block.credits !== undefined && ` · ${block.credits} credits used`}
+					Worked for {formatDuration(block.seconds ?? 0)}{block.credits !== undefined && ` · ${block.credits} credits used`}
 				</p>
 				<ul className='flex max-h-60 flex-col divide-y divide-border overflow-y-auto rounded-lg border border-border'>
 					{block.files.map((file) => (
@@ -841,6 +866,7 @@ function PromptStarters({ items, onPick }: { items: string[]; onPick: (item: str
 export {
 	ActionChips,
 	ActivityFeed,
+	ElapsedTime,
 	AnswersMessage,
 	ArchieText,
 	DaySeparator,

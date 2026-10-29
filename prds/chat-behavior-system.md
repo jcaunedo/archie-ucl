@@ -117,7 +117,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 
 ## 6. Behavior rules
 
-1. **One live status.** One activity indicator per turn, replaced in place; it never piles up (progress PRD FR-02).
+1. **One live status.** One activity indicator per turn, replaced in place; it never piles up (progress PRD FR-02). After it, how long Archie has been working on the turn, ticking each second ("· 12s", "· 1m 05s"). Every duration Archie shows uses that format: "Thought for 1m 05s", "Blueprint generated · 7s", "Worked for 26s".
 2. **Thinking collapses.** When text starts, the status becomes "Thought for Ns" with the real elapsed time. Times shown are always measured, never scripted (progress PRD §4.6).
 3. **Questions before the blueprint.** For a new app, Archie asks up to four questions, one at a time. Each has options, "You decide" (Archie picks a default) and a free answer (typed in the composer). Typing just an option's letter ("b", "B.", "b)") picks that option, the same as clicking it; a letter past the last option stays a typed answer. When the last is answered, the answers go as one person message, and Archie drafts the blueprint. Answers can be changed at any point (rule 13).
 4. **Unclear input gets a question, not a guess.** Archie asks when a message is:
