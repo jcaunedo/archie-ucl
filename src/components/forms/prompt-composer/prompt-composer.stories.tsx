@@ -6,6 +6,7 @@ import { expect, fn } from "storybook/test";
 import {
 	PromptComposer,
 	PromptComposerButton,
+	PromptComposerCommands,
 	PromptComposerFooter,
 	PromptComposerSubmit,
 	PromptComposerTextarea,
@@ -25,15 +26,18 @@ function ModelStandIn() {
 	);
 }
 
-/** Figma's row: attach on the left; model, mic and Send on the right, 8px apart. */
+/** Figma's row: attach (and commands, when there are any) on the left; model, mic and Send on the right, 8px apart. */
 function Composer(props: ComponentProps<typeof PromptComposer>) {
 	return (
 		<PromptComposer {...props}>
-			<PromptComposerTextarea placeholder='Message Archie…' aria-label='Message Archie' />
+			<PromptComposerTextarea placeholder='Message Archie or type / for options' aria-label='Message Archie' />
 			<PromptComposerFooter>
-				<PromptComposerButton aria-label='Attach files'>
-					<Plus />
-				</PromptComposerButton>
+				<div className='flex items-center gap-1'>
+					<PromptComposerButton aria-label='Attach files'>
+						<Plus />
+					</PromptComposerButton>
+					{props.commands && <PromptComposerCommands />}
+				</div>
 				<div className='flex items-center gap-2'>
 					<ModelStandIn />
 					<PromptComposerButton variant='outline' aria-label='Dictate'>
@@ -130,6 +134,60 @@ export const Pending: Story = {
 	},
 };
 
+/**
+ * Archie is working and can be stopped (`onStop`, Figma Archie-App "Queue"). Test: the empty box offers Stop; typing turns
+ * Send into "Add to queue" with a smaller Stop, and Enter still sends the message for the app to queue.
+ */
+export const Working: Story = {
+	args: {
+		onStop: fn(),
+	},
+	play: async ({ args, canvas, userEvent }) => {
+		await userEvent.click(canvas.getByRole("button", { name: "Stop" }));
+		await expect(args.onStop).toHaveBeenCalledOnce();
+
+		await userEvent.type(canvas.getByRole("textbox", { name: "Message Archie" }), "Add a wishlist");
+		await expect(canvas.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+		await userEvent.keyboard("{Enter}");
+		await expect(args.onSubmit).toHaveBeenCalledWith("Add a wishlist");
+	},
+};
+
+const commands = [
+	{ name: "prototype", description: "Generate a prototype from the blueprint" },
+	{ name: "theme", description: "Change the color scheme" },
+	{ name: "module", description: "Add a module to the blueprint" },
+	{ name: "contrast", description: "Check color contrast" },
+];
+
+/**
+ * Slash commands (as intercept-ucl's ChatComposer). Test: "/" opens the menu; typing filters it; Enter picks the active
+ * command into the message; Escape closes the menu; the slash button opens it over text.
+ */
+export const Commands: Story = {
+	args: {
+		commands,
+	},
+	play: async ({ canvas, userEvent }) => {
+		const field = canvas.getByRole("combobox", { name: "Message Archie" });
+		await userEvent.type(field, "/");
+		await expect(canvas.getAllByRole("option")).toHaveLength(commands.length);
+
+		await userEvent.type(field, "th");
+		await expect(canvas.getAllByRole("option")).toHaveLength(1);
+		await userEvent.keyboard("{Enter}");
+		await expect(field).toHaveValue("/theme ");
+		await expect(canvas.queryByRole("listbox")).not.toBeInTheDocument();
+
+		await userEvent.type(field, "green");
+		await userEvent.click(canvas.getByRole("button", { name: "Commands" }));
+		await expect(canvas.getByRole("listbox", { name: "Commands" })).toBeInTheDocument();
+		await userEvent.keyboard("{Escape}");
+		await expect(canvas.queryByRole("listbox")).not.toBeInTheDocument();
+		await expect(field).toHaveValue("/theme green");
+	},
+};
+
 export const AllVariants: Story = {
 	render: (args) => (
 		<div className='flex flex-col gap-4 text-sm text-muted-foreground'>
@@ -141,6 +199,10 @@ export const AllVariants: Story = {
 			<Composer {...args} onVoice={undefined} />
 			<span>Pending</span>
 			<Composer {...args} pending defaultValue='Now add payments' />
+			<span>Working, empty</span>
+			<Composer {...args} onStop={() => {}} />
+			<span>Working, with a message to queue</span>
+			<Composer {...args} onStop={() => {}} defaultValue='Add a wishlist' />
 		</div>
 	),
 };

@@ -20,6 +20,8 @@ const motionDuration = {
 	pendingLoop: 1.2,
 	/** One sweep of the highlight across a pending status label (Pending pattern, text). Slower than the pulse: it reads. */
 	pendingShimmer: 2,
+	/** One bounce of the activity ball: fall, contact, rise (ActivityIndicator). */
+	pendingBounce: 0.72,
 } as const;
 
 /** Pixels. */
@@ -34,6 +36,8 @@ const motionDistance = {
 	medium: 24,
 	/** Page transition: 24–48px. */
 	large: 40,
+	/** How high the activity ball rises above its floor (ActivityIndicator's 14px icon). */
+	bounce: 6,
 } as const;
 
 /** Unitless scale factors. */
@@ -60,6 +64,14 @@ const motionScale = {
 	drag: 1.03,
 	/** Peak of a small trigger icon's Pending pulse (e.g. an AI mark while it generates). */
 	pendingIcon: 1.3,
+	/**
+	 * The activity ball's squash and stretch (ActivityIndicator): at contact it's shorter and wider, its area about the
+	 * same; at full speed, a little taller and narrower along the motion.
+	 */
+	ballSquash: 0.7,
+	ballSpread: 1.3,
+	ballStretch: 1.1,
+	ballNarrow: 0.92,
 } as const;
 
 /** Degrees. Keep rotation under 2 degrees and use it sparingly. */

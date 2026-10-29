@@ -25,7 +25,7 @@ Everything specific to this project is in this section, "Stack", "Figma", and DE
 - **[MOTION.md](MOTION.md)**: the motion system. Covers principles, the named patterns, component guidance, accessibility and validation. Read it before any animation work. The values live in `src/lib/motion/`.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: how each app's layouts are wired, one section per app. Covers which file does what, how the pieces connect and which files are sample data to replace.
 - **[DESIGN.md](DESIGN.md)**: design contracts. Covers why a component is built the way it is, rules that a future edit or Figma/shadcn resync could silently break, and the brand voice.
-- **[documents/](documents/)**: background context. `what-is-archie.md` explains what Archie is, how the blueprint-first workflow runs and who it's for. Read it before writing product copy, sample data or simulated conversations.
+- **[documents/](documents/)**: reference material added as context, not part of the repo's architecture: PDFs, links, Word docs, notes, emails, text files. `what-is-archie.md` explains what Archie is, how the blueprint-first workflow runs and who it's for. Read it before writing product copy, sample data or simulated conversations. Sample data never goes here (see "Architecture" → Sample data).
 - **Skills** in `.claude/skills/` (`ucl-ds-sync`, `ucl-generate-component`, `ucl-generate-layout`, `ucl-ux-copywriter`) are project-agnostic. They read CLAUDE.md and DESIGN.md before they start (plus MOTION.md when the work involves animation) and take every project value (package, Figma file, categories, apps, component APIs, voice) from them. **When a skill and these files disagree, these files win.**
 - **Not defined here?** Ask, then record the answer in the right file so the next run doesn't have to ask again.
 
@@ -102,6 +102,8 @@ Skills compare every Figma URL's `fileKey` against both files in this table and 
 
   Exception: `typography` holds a single component, so its files sit directly in `src/components/typography/` (no `typography/typography/`), as in bethere-ucl. Import it from `@/components/typography`.
 - **Layouts:** full-page reference compositions under `src/layouts/<app>/<name>/`, previewed in Storybook and **not** exported from `src/index.ts`. Layouts used by more than one app go in `src/layouts/shared/`. Apps are listed in "Project". Screens in a multi-screen flow nest under `src/layouts/<app>/<flow>/`; list each flow here when it's created. Each app's wiring (which file does what, how the pieces connect, which files are sample data) is in [ARCHITECTURE.md](ARCHITECTURE.md), one section per app. Read the app's section before working on its layouts, and update it in the same change when the wiring changes; a new app gets its own section.
+- **Sample data:** data shared by more than one layout or story goes in `src/sample-data/<sample>/`, one folder per sample project. Each folder holds a `<sample>.md` describing the project (names, prompt, blueprint, turns), and later the shared `.ts` data built from it. Not exported from `src/index.ts`. Sample data used by one layout only stays beside it as `sample-*.ts`; a component's stories keep their own neutral copy.
+  - `road-bike-store/`: Paceline Supply's road bike accessories store, the project in Archie's simulated conversations. `blueprint.ts` holds its blueprint (clarifying questions, description, user types, modules, core services, integrations); import it from `@/sample-data/road-bike-store`.
 - **Lib:** `src/lib/`
   - `utils.ts`: `cn()`
   - `breakpoints.ts`: `breakpoints`, `mediaAbove()`
@@ -203,6 +205,9 @@ Mirror these names when a new component has the same concept. Keep this list cur
 - **PromptComposer** (`forms/prompt-composer`): the message box for Archie, on InputGroup. `PromptComposer` (a `form`), `PromptComposerTextarea`, `PromptComposerFooter`, `PromptComposerButton`, `PromptComposerSubmit` (Figma "prompt-composer" in `archie.ds`)
   - `value` / `defaultValue` / `onValueChange`; `onSubmit(message)` gets the trimmed text on Enter or Send (Shift+Enter adds a line)
   - `pending` (Button's name): Send is busy, nothing sends. `onVoice`: an empty box shows the voice button in place of Send
+  - `onStop`: Archie is working. An empty box shows Stop; with text, Send becomes "Add to queue" (still calls `onSubmit`; the app queues it) with a smaller Stop before it
+  - Send and Add to queue are `brand`; voice and Stop `neutral`. The button grows in when it changes role
+  - `commands` (`PromptComposerCommand`: `name`, `description`): "/" at the start, or `PromptComposerCommands` (the slash button, after attach), opens the commands menu above the box; it filters as you type, ↑ ↓ move, Enter or Tab picks ("/name " goes into the message), Escape closes it. The field becomes a combobox. Same interaction as intercept-ucl's ChatComposer `commands`
   - Slots: the app's controls (attach, model, mic) go in the footer as `PromptComposerButton`s; `PromptComposerSubmit` goes last
 - **Textarea** (`forms/textarea`): same `size` and states as Input; `size` sets a minimum height, and it grows with its content
 - **Label** (`forms/label`): Radix Label. Above a field: medium weight, keeps its color when disabled. After a checkbox/radio/switch (`peer`): regular weight, `muted-foreground` when disabled
@@ -224,7 +229,8 @@ Mirror these names when a new component has the same concept. Keep this list cur
   - `ChatPanelTrigger` collapses it from the header; `ChatPanelRail` (the collapsed strip, holding the Archie mark) expands it. Content stays mounted while collapsed
 - **ChatMessage** (`data-display/chat-message`): the person's message, a right-aligned bubble. No props beyond the `div`'s; Archie's replies have no Figma yet
 - **ActivityIndicator** (`feedback/activity-indicator`): Archie's live status ("Thinking…"), PRD "Conversational progress feedback" Component A
-  - The label is the children; replace it in place. `role='status'`. Shimmers while shown (`pendingTextVariants`), solid under reduced motion
+  - The label is the children; replace it in place. `role='status'`. A highlight sweeps across it (`pendingTextVariants`) while the icon, a ball, bounces with gravity and squash and stretch; both are still under reduced motion
+  - `ActivityIndicatorIcon`: the bouncing ball on its own, Archie's one activity icon. Use it wherever Archie shows activity (a running step, a file being written); `animate={false}` shows it still, a dot centered on the text, for finished activity ("Thought for 3s"). Takes the text color
   - Only the PRD's Active state exists; Default, Completed and Failed wait for Figma
 - **Typography** (`typography/`, the category folder itself):
   - `size`: `xs` | `sm` | `base` | `lg` | `xl` | `2xl` | `3xl` | `4xl` | `5xl` | `6xl` | `7xl` (the `--text-*` scale)

@@ -14,7 +14,8 @@ import {
 import { cn } from "@/lib/utils";
 
 // Figma "chat-composer" (archie.ds), State=expanded | collapsed: the chat column. Expanded, a header (chat switcher and
-// actions), the thread, and the PromptComposer pinned at the bottom. Collapsed, a 32px rail that expands it again.
+// actions), the thread, and the PromptComposer pinned at the bottom. Collapsed, a 32px rail (36px on hover) that expands
+// it again.
 // ChatPanel draws the frame and the areas; apps fill them. Open state follows shadcn's Sidebar (`open`, `defaultOpen`,
 // `onOpenChange`, `data-state`).
 //
@@ -83,7 +84,8 @@ function ChatPanel({ open: openProp, defaultOpen = true, onOpenChange, className
 					// `background-subtle` from 60.675% down.
 					"group/chat-panel relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-input bg-linear-to-b from-background from-[60.675%] to-background-subtle shadow-prompt",
 					// Figma State=collapsed: 32px wide. The attribute selector outweighs a width the app sets for the open panel.
-					"data-[state=collapsed]:w-8",
+					// Hovered, the rail widens to 36px (decision 2026-10-29) at hover speed; the canvas beside it follows.
+					"data-[state=collapsed]:w-8 data-[state=collapsed]:hover:w-9 data-[state=collapsed]:hover:duration-(--chat-panel-hover)",
 					"transition-[width] duration-(--chat-panel-width) ease-(--chat-panel-width-ease)",
 					className,
 				)}
@@ -100,7 +102,8 @@ function cssEase(transition: { ease?: unknown }) {
 }
 
 /**
- * The panel's timing as CSS variables: the width on `standardTransition`; the content out on `exitTransition` at
+ * The panel's timing as CSS variables: the width on `standardTransition`, and the collapsed rail's hover widening at
+ * `motionDuration.fast`; the content out on `exitTransition` at
  * `motionDuration.instant`; the content in on `enterTransition`'s curve at `motionDuration.fast`, after the width lands.
  * Under reduced motion, every step is near-instant (`reducedMotionTransition`) and nothing waits.
  */
@@ -109,6 +112,7 @@ function panelTiming(prefersReducedMotion: boolean | null) {
 	return {
 		"--chat-panel-width": prefersReducedMotion ? instant : `${motionDuration.normal}s`,
 		"--chat-panel-width-ease": cssEase(standardTransition),
+		"--chat-panel-hover": prefersReducedMotion ? instant : `${motionDuration.fast}s`,
 		"--chat-panel-out": prefersReducedMotion ? instant : `${motionDuration.instant}s`,
 		"--chat-panel-out-ease": cssEase(exitTransition),
 		"--chat-panel-in": prefersReducedMotion ? instant : `${motionDuration.fast}s`,
@@ -168,7 +172,7 @@ function ChatPanelBody({ className, ...props }: ChatPanelBodyProps) {
 			data-slot='chat-panel-body'
 			inert={inert}
 			// Figma: 8px body padding + 8px thread padding, 16px between messages.
-			className={cn("flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4", hiddenWhenCollapsed, className)}
+			className={cn("scrollbar-soft flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4", hiddenWhenCollapsed, className)}
 			{...props}
 		/>
 	);
@@ -251,8 +255,8 @@ function ChatPanelRail({ className, onClick, ...props }: ChatPanelRailProps) {
 				}
 			}}
 			className={cn(
-				// Figma State=collapsed: the mark centered on the strip. Figma has no hover; focus is an inset ring. Laid over the
-				// panel, so it never pushes the content while one fades into the other.
+				// Figma State=collapsed: the mark centered on the strip. Hover widens the panel (ChatPanel); focus is an inset
+				// ring. Laid over the panel, so it never pushes the content while one fades into the other.
 				"absolute inset-0 flex items-center justify-center rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
 				// The reverse of the content: it goes fast when the panel opens, and fades in once the panel has narrowed.
 				"transition-none group-data-animate/chat-panel:transition-[opacity,display] group-data-animate/chat-panel:transition-discrete",

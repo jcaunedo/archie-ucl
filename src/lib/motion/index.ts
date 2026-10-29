@@ -13,6 +13,8 @@ export {
 
 export {
   fadeVariants,
+  feedItemVariants,
+  slideUpVariants,
   rowRemoveVariants,
   revealVariants,
   expandVariants,
@@ -28,6 +30,7 @@ export {
   pendingSurfaceVariants,
   pendingTextVariants,
   pendingSpinnerVariants,
+  pendingBallVariants,
 } from "./variants";
 
 export {

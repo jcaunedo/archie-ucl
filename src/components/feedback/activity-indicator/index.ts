@@ -1,1 +1,6 @@
-export { ActivityIndicator, type ActivityIndicatorProps } from "./activity-indicator";
+export {
+	ActivityIndicator,
+	ActivityIndicatorIcon,
+	type ActivityIndicatorIconProps,
+	type ActivityIndicatorProps,
+} from "./activity-indicator";

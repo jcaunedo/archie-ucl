@@ -1,4 +1,4 @@
-import type { Variants } from "motion/react";
+import type { TargetAndTransition, Transition, Variants } from "motion/react";
 
 import { motionDistance, motionDuration, motionScale, motionStagger } from "./tokens";
 import { enterTransition, exitTransition, standardTransition, swapEnterTransition } from "./transitions";
@@ -168,6 +168,7 @@ const iconSwapReducedVariants: Variants = {
  * - `pendingSurfaceVariants` — the content being worked on (a field, a card): fade only.
  * - `pendingSpinnerVariants` — a spinner that replaces a label while its button works (Button `pending`).
  * - `pendingTextVariants` — a status label that is still working ("Thinking…"): a highlight sweeps across it.
+ * - `pendingBallVariants` — the icon beside that label: a ball bouncing with real physics.
  */
 const pendingLoop = { duration: motionDuration.pendingLoop, repeat: Infinity, ease: "easeInOut" } as const;
 
@@ -196,20 +197,93 @@ const pendingSpinnerVariants: Variants = {
 };
 
 /**
- * A status label that is still working ("Thinking…"): a highlight sweeps across the text, left to right. Needs a
- * gradient text fill three times the label's width, highlight in the middle third, so it enters and leaves off-screen
- * and the loop has no seam. Under reduced motion, use `idle` with a solid fill instead.
+ * Slide up: content taking over a spot rises gently into place while it fades in (the next clarifying question). Subtle:
+ * 12px on the standard curve, slow enough that the rise reads; the fade finishes sooner. Under reduced motion, appear
+ * without it.
  */
+const slideUpVariants: Variants = {
+  initial: { opacity: 0, y: motionDistance.small },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { ...standardTransition, duration: motionDuration.slow, opacity: { duration: motionDuration.normal } },
+  },
+};
+
+/**
+ * Feed: a live list where each new item slides up into place at the bottom and the oldest slides up and out at the top
+ * (Archie's activity feed). Use with `AnimatePresence mode="popLayout"`, a stable key per item and `layout` (on
+ * `layoutSpring`) on each item, so the others move up together. Under reduced motion, use `fadeVariants` without `layout`.
+ */
+const feedItemVariants: Variants = {
+  initial: { opacity: 0, y: motionDistance.subtle },
+  animate: { opacity: 1, y: 0, transition: enterTransition },
+  exit: { opacity: 0, y: -motionDistance.subtle, transition: exitTransition },
+};
+
+/**
+ * A status label that is still working ("Thinking…"): a highlight sweeps across the text, left to right. The variant
+ * brings its own fill: a gradient of the text's color three times the label's width, fading to 15% of that color in the
+ * middle third, so the highlight enters and leaves off-screen and the loop has no seam. The text itself is hidden with
+ * `WebkitTextFillColor`, not `color`, so `currentColor` stays the label's color. `idle` is the plain text: use it under
+ * reduced motion.
+ */
+// The text's own fill. Motion's types leave out vendor-prefixed styles, but it sets them on the element like any other.
+const textFill = (color: string) => ({ WebkitTextFillColor: color }) as TargetAndTransition;
+
 const pendingTextVariants: Variants = {
-  idle: { backgroundPosition: "50% 0%" },
+  idle: {
+    ...textFill("currentcolor"),
+    backgroundImage: "none",
+    transition: { duration: 0 },
+  },
   pending: {
+    backgroundImage:
+      "linear-gradient(90deg, currentColor 35%, color-mix(in oklab, currentColor 15%, var(--background)) 50%, currentColor 65%)",
+    backgroundSize: "300% 100%",
+    backgroundClip: "text",
+    ...textFill("transparent"),
     backgroundPosition: ["100% 0%", "0% 0%"],
-    transition: { duration: motionDuration.pendingShimmer, repeat: Infinity, ease: "linear" },
+    transition: {
+      default: { duration: 0 },
+      backgroundPosition: { duration: motionDuration.pendingShimmer, repeat: Infinity, ease: "linear" },
+    },
+  },
+};
+
+/**
+ * The activity ball (ActivityIndicator): a ball bouncing on a floor, with real physics. It falls under gravity, speeding
+ * up (a quadratic ease-in, the curve of free fall); squashes on contact, wider and shorter with about the same area;
+ * springs off and rises slowing down (a quadratic ease-out), stretched a little along the motion while it's fastest.
+ * Contact sits in the middle of each `pendingBounce` loop. Scale it from its bottom (`originY: 1`), so the squash stays
+ * on the floor.
+ */
+const gravityIn = [0.11, 0, 0.5, 0] as const;
+const gravityOut = [0.5, 1, 0.89, 1] as const;
+const bounceLoop = { duration: motionDuration.pendingBounce, repeat: Infinity } as const;
+// Squash and stretch: stretch builds with speed on the way down, the squash peaks mid-contact, and both relax as the
+// ball slows on the way up.
+const squashTiming: Transition = {
+  ...bounceLoop,
+  times: [0, 0.43, 0.5, 0.57, 1],
+  ease: ["easeIn", "easeOut", "easeIn", "easeOut"],
+};
+const flightTiming: Transition = { ...bounceLoop, times: [0, 0.45, 0.55, 1], ease: [gravityIn, "linear", gravityOut] };
+
+const pendingBallVariants: Variants = {
+  idle: { y: 0, scaleX: 1, scaleY: 1, transition: standardTransition },
+  pending: {
+    y: [-motionDistance.bounce, 0, 0, -motionDistance.bounce],
+    scaleX: [1, motionScale.ballNarrow, motionScale.ballSpread, motionScale.ballNarrow, 1],
+    scaleY: [1, motionScale.ballStretch, motionScale.ballSquash, motionScale.ballStretch, 1],
+    transition: { y: flightTiming, scaleX: squashTiming, scaleY: squashTiming },
   },
 };
 
 export {
   fadeVariants,
+  feedItemVariants,
+  slideUpVariants,
   rowRemoveVariants,
   revealVariants,
   expandVariants,
@@ -225,4 +299,5 @@ export {
   pendingSurfaceVariants,
   pendingTextVariants,
   pendingSpinnerVariants,
+  pendingBallVariants,
 };

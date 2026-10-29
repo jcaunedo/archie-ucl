@@ -41,7 +41,7 @@ function ArchieMarkStandIn() {
 function ChatSwitcherStandIn() {
 	return (
 		<button type='button' className='flex min-w-0 items-center gap-1 text-sm font-medium text-foreground'>
-			<span className='truncate'>Ice cream inventory app</span>
+			<span className='truncate'>Road bike accessories store</span>
 			<ChevronDown aria-hidden className='size-4 shrink-0 text-icon' />
 		</button>
 	);

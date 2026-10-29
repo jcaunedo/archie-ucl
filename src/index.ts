@@ -78,7 +78,12 @@ export {
 /* Feedback                                                                   */
 /* -------------------------------------------------------------------------- */
 
-export { ActivityIndicator, type ActivityIndicatorProps } from "@/components/feedback/activity-indicator";
+export {
+	ActivityIndicator,
+	ActivityIndicatorIcon,
+	type ActivityIndicatorIconProps,
+	type ActivityIndicatorProps,
+} from "@/components/feedback/activity-indicator";
 
 /* -------------------------------------------------------------------------- */
 /* Forms                                                                      */
@@ -121,10 +126,13 @@ export { Label, type LabelProps } from "@/components/forms/label";
 export {
 	PromptComposer,
 	PromptComposerButton,
+	PromptComposerCommands,
 	PromptComposerFooter,
 	PromptComposerSubmit,
 	PromptComposerTextarea,
 	type PromptComposerButtonProps,
+	type PromptComposerCommand,
+	type PromptComposerCommandsProps,
 	type PromptComposerFooterProps,
 	type PromptComposerProps,
 	type PromptComposerSubmitProps,

@@ -57,7 +57,9 @@ Use these named patterns before inventing new motion. Gesture patterns live in `
 | Glide    | Directional navigation                 | `slideVariants` (`custom={1 \| -1}`), `glidePattern` |
 | Dismiss  | Content removed or closed              | `dismissVariants`; table/list rows: `rowRemoveVariants` |
 | Confirm  | Lightweight success feedback           | `confirmPattern`                                |
-| Pending  | Work in progress on an element's behalf | `pendingIconVariants`, `pendingSurfaceVariants`; a status label: `pendingTextVariants` (a slow highlight sweep, `motionDuration.pendingShimmer`) |
+| Slide up | Content taking over a spot, gently (the next clarifying question) | `slideUpVariants`: 12px up on the standard curve, the fade finishing sooner |
+| Feed     | A live list that keeps growing (Archie's activity feed) | `feedItemVariants` with `AnimatePresence mode="popLayout"` and `layout` (`layoutSpring`): new items slide up into place, the oldest slides out at the top |
+| Pending  | Work in progress on an element's behalf | `pendingIconVariants`, `pendingSurfaceVariants`; a status label: `pendingTextVariants` (a slow highlight sweep, `motionDuration.pendingShimmer`); the icon beside it: `pendingBallVariants` (a ball bouncing with gravity, squash and stretch; ActivityIndicator only, DESIGN.md) |
 
 Plus `fadeVariants`, `overlayVariants` (scrims), `panelVariants` (drawers) and `iconSwapVariants` (one small element replacing another in place).
 
@@ -70,7 +72,9 @@ Plus `fadeVariants`, `overlayVariants` (scrims), `panelVariants` (drawers) and `
 - **Dialogs/overlays:** `AnimatePresence`, overlay fade, small surface movement, exit shorter than entrance. Usable immediately.
 - **Tabs:** active indicator via shared `layoutId`.
 - **Lists:** `AnimatePresence` with stable unique keys (never the index). Don't replay entrances on routine data updates.
-- **Loading:** subtle opacity pulse. No aggressive or high-contrast loaders.
+- **Loading:** subtle opacity pulse. No aggressive or high-contrast loaders. Exception: ActivityIndicator's icon is a ball that keeps bouncing (DESIGN.md "Chat panel, ChatMessage and ActivityIndicator").
+- **Small icons in 3D:** don't use `rotateX`/`rotateY`/`perspective` on a small SVG that animates: the GPU layer they create is stretched, not redrawn, and the icon blurs. Draw the effect in 2D (a squash along the tilt's direction looks the same).
+- **Looping animations:** start them from `initial='idle'` (or no `initial`), never `initial={false}`. With `initial={false}` Motion jumps to the last keyframe and the loop never runs.
 
 ## Layout and presence
 

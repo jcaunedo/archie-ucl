@@ -296,7 +296,7 @@
 	--secondary-foreground: var(--brand);
 	--muted: var(--gray-100);
 	--muted-foreground: var(--gray-500);
-	--accent: oklch(0.185 0.035 265.25 / 3%);
+	--accent: oklch(0.184 0.036 267.68 / 4%);
 	--accent-foreground: var(--foreground);
 	--destructive: var(--destructive-500);
 	--destructive-foreground: var(--brand-foreground);
@@ -539,5 +539,29 @@
 		font-synthesis: none;
 		-webkit-text-size-adjust: 100%;
 		text-size-adjust: 100%;
+	}
+}
+
+/* ---------- Soft scrollbar ----------
+   `scrollbar-soft`: a thin scrollbar whose thumb is `icon-muted` at 70% opacity on a clear track, so a scrolling area
+   (the chat thread) shows where you are without a heavy bar. Shipped to consumers. Safari doesn't support
+   `scrollbar-color` yet, so it gets the same look through `::-webkit-scrollbar` (6px, round).
+   See DESIGN.md "Chat panel". */
+@utility scrollbar-soft {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--icon-muted) 70%, transparent) transparent;
+
+	@supports not (scrollbar-color: auto) {
+		&::-webkit-scrollbar {
+			width: 6px;
+			height: 6px;
+		}
+		&::-webkit-scrollbar-track {
+			background: transparent;
+		}
+		&::-webkit-scrollbar-thumb {
+			border-radius: 9999px;
+			background: color-mix(in oklab, var(--icon-muted) 70%, transparent);
+		}
 	}
 }

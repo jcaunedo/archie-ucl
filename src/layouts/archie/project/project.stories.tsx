@@ -1,9 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, type within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
+
+import { blueprint } from "@/sample-data/road-bike-store";
 
 import { Project } from "./project";
-import { createSampleArchie } from "./sample-archie";
-import { sampleNewProject, sampleProject, sampleProjectWithReply } from "./sample-project";
+import { createSampleArchie, garbledReplies } from "./sample-archie";
+import {
+	sampleBlueprintReady,
+	sampleNewProject,
+	sampleProject,
+	sampleProjectWithReply,
+	sampleVersionHistory,
+} from "./sample-project";
+
+// The chat follows prds/chat-behavior-system.md. Stories that test a turn use the sample Archie at `pace: 0`, so it
+// answers at once; Conversation and SimulatedConversation play it at a readable pace.
 
 const meta = {
 	title: "Layouts/Archie/Project",
@@ -19,19 +30,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+type Canvas = ReturnType<typeof within>;
+
+/** Waits until Archie has finished its turn: the thread is no longer busy. */
+async function archieFinished(canvas: Canvas) {
+	await waitFor(() => expect(canvas.getByRole("log")).not.toHaveAttribute("aria-busy"), { timeout: 30_000 });
+}
+
+/** An option in Archie's current question, by its text (the button also reads its letter, "A."). */
+const option = (canvas: Canvas, text: string) => canvas.getByRole("button", { name: new RegExp(`${text}$`) });
+
 /**
- * Figma "project": the request sent, Archie thinking, Plan open.
- * Test: picking Design retitles the canvas, and sending a message adds it to the thread with Archie thinking.
+ * Figma "Default": the request sent, Archie working on it, Plan open and still empty. Archie is live, so it answers and
+ * you can keep chatting.
+ * Test: Archie's status shows, the canvas is on Plan, and Plan shows its empty state.
  */
 export const Default: Story = {
-	play: async ({ canvas, userEvent }) => {
+	args: {
+		respond: createSampleArchie(),
+	},
+	play: async ({ canvas }) => {
+		await expect(await canvas.findByRole("status")).toHaveTextContent("Understanding your request…");
 		await expect(canvas.getByRole("heading", { level: 1 })).toHaveTextContent("Plan");
+		await expect(canvas.getByText("Your blueprint will show up here")).toBeInTheDocument();
+	},
+};
+
+/** Switching phases in MainNav. Test: picking Design retitles the canvas, and picking Plan brings it back. */
+export const SwitchPhase: Story = {
+	args: {
+		respond: createSampleArchie(),
+	},
+	play: async ({ canvas, userEvent }) => {
 		await userEvent.click(canvas.getByRole("tab", { name: "Design" }));
 		await expect(canvas.getByRole("heading", { level: 1 })).toHaveTextContent("Design");
-
-		await userEvent.type(canvas.getByRole("textbox", { name: "Message Archie" }), "Add a supplier page{Enter}");
-		await expect(canvas.getByRole("log")).toHaveTextContent("Add a supplier page");
-		await expect(canvas.getByRole("status")).toHaveTextContent("Thinking…");
+		await userEvent.click(canvas.getByRole("tab", { name: "Plan" }));
+		await expect(canvas.getByRole("heading", { level: 1 })).toHaveTextContent("Plan");
 	},
 };
 
@@ -39,6 +73,7 @@ export const Default: Story = {
 export const ChatCollapsed: Story = {
 	args: {
 		defaultChatOpen: false,
+		respond: createSampleArchie(),
 	},
 	play: async ({ canvas, userEvent }) => {
 		await expect(canvas.queryByRole("log")).not.toBeInTheDocument();
@@ -48,20 +83,268 @@ export const ChatCollapsed: Story = {
 	},
 };
 
-/** After Archie answers: its reply below the request, and no "Thinking…". */
-export const WithReply: Story = {
+/** An empty chat (Prompt Starters). Test: picking a starter sends it, and Archie answers. */
+export const EmptyChat: Story = {
+	args: {
+		data: sampleNewProject,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		await expect(canvas.getByText("What do you want to build?")).toBeInTheDocument();
+		await userEvent.click(canvas.getByRole("button", { name: "What's a database relationship?" }));
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("one-to-many relationship");
+	},
+};
+
+/**
+ * Archie's clarifying questions, one at a time (rule 3).
+ * Test: choosing an option moves to the next question; a typed message answers the one after it; "You decide", the last
+ * option, answers the third; typing a letter ("a.") picks that option on the fourth.
+ */
+export const ClarifyingQuestions: Story = {
 	args: {
 		data: sampleProjectWithReply,
+		respond: createSampleArchie({ pace: 0 }),
 	},
-	play: async ({ canvas }) => {
+	play: async ({ canvas, userEvent }) => {
+		await expect(canvas.getByText(`Question 1 of ${blueprint.clarifyingQuestions.length}`)).toBeInTheDocument();
+		await userEvent.click(option(canvas, blueprint.clarifyingQuestions[0].options[0]));
+		await expect(canvas.getByText(`Question 2 of ${blueprint.clarifyingQuestions.length}`)).toBeInTheDocument();
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "The US and Canada{Enter}");
+		await expect(canvas.getByText(`Question 3 of ${blueprint.clarifyingQuestions.length}`)).toBeInTheDocument();
+
+		// "You decide" is the last lettered option.
+		const options = within(canvas.getByRole("group", { name: blueprint.clarifyingQuestions[2].question })).getAllByRole("button");
+		await expect(options.at(-1)).toHaveAccessibleName(`${String.fromCharCode(64 + options.length)}. You decide`);
+		await userEvent.click(options.at(-1)!);
+		await expect(canvas.getByText(`Question 4 of ${blueprint.clarifyingQuestions.length}`)).toBeInTheDocument();
+
+		// Typing a letter picks that option.
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "a.{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent(`4. ${blueprint.clarifyingQuestions[3].options[0]}`);
+	},
+};
+
+/**
+ * An answer Archie can't read gets asked again (rule 4).
+ * Test: an unreadable typed answer makes Archie ask that question again, keeping the others; a clear answer then lets it
+ * draft the blueprint.
+ */
+export const UnreadableAnswer: Story = {
+	args: {
+		data: sampleProjectWithReply,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const [first, second, ...rest] = blueprint.clarifyingQuestions;
+		await userEvent.click(option(canvas, first.options[0]));
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "sdkfj{Enter}");
+		for (const question of rest) {
+			await userEvent.click(option(canvas, question.options[0]));
+		}
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("I couldn't read your answer to question 2");
+		await expect(canvas.getByText(second.question, { selector: "p" })).toBeInTheDocument();
+
+		await userEvent.click(option(canvas, second.options[0]));
+		await archieFinished(canvas);
+		await expect(canvas.getByText("Blueprint generated", { exact: false })).toBeInTheDocument();
+	},
+};
+
+/**
+ * Changing answers (rule 13).
+ * Test: changing an answer keeps the answers below it, unless they depend on it (shipping depends on the seller
+ * question), and the active question comes back; Keep my answer cancels a change. Once sent, the answers expand to
+ * show their questions.
+ */
+export const ChangeAnswers: Story = {
+	args: {
+		data: sampleProjectWithReply,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const [seller, shipping, accounts, compatibility] = blueprint.clarifyingQuestions;
+		const total = blueprint.clarifyingQuestions.length;
+		await userEvent.click(option(canvas, seller.options[0]));
+		await userEvent.click(option(canvas, shipping.options[0]));
+		await expect(canvas.getByText(`Question 3 of ${total}`)).toBeInTheDocument();
+
+		// Nothing depends on shipping: question 3 is still next.
+		await userEvent.click(canvas.getByRole("button", { name: "Change answer 2" }));
+		await expect(canvas.getByText("Changing question 2")).toBeInTheDocument();
+		await userEvent.click(option(canvas, shipping.options[2]));
+		await expect(canvas.getByText(`Question 3 of ${total}`)).toBeInTheDocument();
+
+		// Keep my answer cancels a change.
+		await userEvent.click(canvas.getByRole("button", { name: "Change answer 1" }));
+		await userEvent.click(canvas.getByRole("button", { name: "Keep my answer" }));
+		await expect(canvas.getByText(`Question 3 of ${total}`)).toBeInTheDocument();
+
+		// Shipping depends on the seller answer: changing it asks shipping again.
+		await userEvent.click(canvas.getByRole("button", { name: "Change answer 1" }));
+		await userEvent.click(option(canvas, seller.options[1]));
+		await expect(canvas.getByText(`Question 2 of ${total}`)).toBeInTheDocument();
+
+		for (const question of [shipping, accounts, compatibility]) {
+			await userEvent.click(option(canvas, question.options[0]));
+		}
+		await archieFinished(canvas);
+
+		await userEvent.click(canvas.getByRole("button", { name: "Show questions" }));
+		await expect(canvas.getByRole("log")).toHaveTextContent(`2. ${shipping.question}`);
+
+	},
+};
+
+/**
+ * The blueprint is drafted: Plan is full and Archie proposes two ways to build (rule 5).
+ * Test: Plan lists every module; choosing Generate Prototype builds Version 1 and offers follow-ups.
+ */
+export const BlueprintReady: Story = {
+	args: {
+		data: sampleBlueprintReady,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		for (const module of blueprint.modules) {
+			await expect(canvas.getByText(module.name)).toBeInTheDocument();
+		}
+		await userEvent.click(canvas.getByRole("button", { name: "Generate Prototype" }));
+		await archieFinished(canvas);
+		await expect(canvas.getByText("Current version")).toBeInTheDocument();
+		await expect(canvas.getByRole("group", { name: "Suggested next steps" })).toBeInTheDocument();
+	},
+};
+
+/**
+ * Two versions, two days apart (Checkpoints and Restore).
+ * Test: restoring Version 1 adds a note and a new current version.
+ */
+export const VersionHistory: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		await expect(canvas.getByRole("separator", { name: "2 days ago" })).toBeInTheDocument();
+		await userEvent.click(canvas.getByRole("button", { name: "Restore this version" }));
+		await archieFinished(canvas);
+		await expect(canvas.getByText("Restoring to a previous version: 2 → 1")).toBeInTheDocument();
+		await expect(canvas.getByText("Restored version 1")).toBeInTheDocument();
+	},
+};
+
+/**
+ * Messages Archie can't act on (rule 4).
+ * Test: an unreadable message (even one containing a known word, "red") gets one of the playful replies and no options;
+ * a clear message the script doesn't know gets "What would you like to do?" with options, and choosing one sends it.
+ */
+export const UnclearMessage: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const composer = canvas.getByRole("combobox", { name: "Message Archie" });
+		await userEvent.type(composer, "asdf red qwer{Enter}");
+		await archieFinished(canvas);
+		const log = canvas.getByRole("log").textContent ?? "";
+		await expect(garbledReplies.some((reply) => log.includes(reply))).toBe(true);
+		await expect(canvas.queryByRole("group", { name: "What would you like to do?" })).not.toBeInTheDocument();
+
+		await userEvent.type(composer, "Translate the store into French{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("I'm not sure what you mean.");
+		await userEvent.click(option(canvas, "Ask about my app"));
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("How does the fit check work?");
+	},
+};
+
+/**
+ * A step that fails (Failure Disclosure, rule 9).
+ * Test: connecting Stripe fails with an alert; Retry succeeds and adds a version.
+ */
+export const StepFails: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "Connect Stripe{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("alert")).toHaveTextContent("Couldn't connect to Stripe");
+		await userEvent.click(canvas.getByRole("button", { name: "Retry connecting Stripe" }));
+		await archieFinished(canvas);
+		await expect(canvas.getByText("Connected Stripe payments")).toBeInTheDocument();
+	},
+};
+
+/**
+ * Sending while Archie works queues the message, and Stop keeps what's done (rules 7 and 8).
+ * Test: the empty box offers Stop; typing turns it into Add to queue; the message waits in the queue; Stop ends the turn
+ * and the queued message goes.
+ */
+export const QueueAndStop: Story = {
+	args: {
+		respond: createSampleArchie(),
+	},
+	play: async ({ canvas, userEvent }) => {
+		await expect(canvas.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "What's a database relationship?");
+		await expect(canvas.getByRole("button", { name: "Add to queue" })).toBeInTheDocument();
+		await userEvent.keyboard("{Enter}");
+		await expect(canvas.getByText("In queue (1)")).toBeInTheDocument();
+
+		await userEvent.click(canvas.getByRole("button", { name: "Stop" }));
+		await expect(canvas.getByText("Stopped.")).toBeInTheDocument();
+		await expect(canvas.queryByText("In queue (1)")).not.toBeInTheDocument();
+		await expect(canvas.getByRole("log")).toHaveTextContent("What's a database relationship?");
+	},
+};
+
+/**
+ * Slash commands, as in intercept-ucl's composer. Test: "/the" filters the menu to /theme, Enter picks it, and sending
+ * "/theme blue" changes the theme in a new version.
+ */
+export const SlashCommand: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const field = canvas.getByRole("combobox", { name: "Message Archie" });
+		await userEvent.type(field, "/the");
+		await expect(canvas.getByRole("option", { name: /\/theme/ })).toHaveAttribute("aria-selected", "true");
+		await userEvent.keyboard("{Enter}");
+		await expect(field).toHaveValue("/theme ");
+		await userEvent.type(field, "blue{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByText("Updated theme to blue palette")).toBeInTheDocument();
+	},
+};
+
+/** A plain answer (Level 1). Test: Archie's reply streams in, then gets copy, feedback and retry. */
+export const ArchieReplies: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "What's a database relationship?{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("That's a one-to-many relationship.");
+		await expect(canvas.getByRole("button", { name: "Copy" })).toBeInTheDocument();
 		await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
 	},
 };
 
 /**
- * Talk to the sample Archie: it answers the opening request on load, then each message you send, with its status
- * updating in place before the reply streams in. It knows a few scripted turns (`sample-archie.ts`); anything else gets
- * a list of what to try.
+ * Talk to the sample Archie at a readable pace. It answers the opening request on load, then each message you send. It
+ * knows the road bike store script (prds/chat-behavior-system.md §7); anything else gets a clarifying question.
  */
 export const Conversation: Story = {
 	args: {
@@ -69,25 +352,18 @@ export const Conversation: Story = {
 	},
 };
 
-/** The person's side of the simulated conversation, in order. Each one matches a turn in `sample-archie.ts`. */
-const personTurns = [
-	"create an ice cream shop inventory app",
-	"We have three shops. Only owners should place supplier orders.",
-	"Can you review the data model and suggest improvements?",
-	"Apply 1 and 3",
-	"Add an end-of-day stock count for staff",
-];
-
-/** Waits until Archie has finished answering: the empty composer shows voice mode again in place of a busy Send. */
-async function archieFinished(canvas: ReturnType<typeof within>) {
-	await waitFor(() => expect(canvas.getByRole("button", { name: "Start voice mode" })).toBeInTheDocument(), {
-		timeout: 30_000,
-	});
+/** Types like a person, waits for Archie, reads, then acts. */
+async function act(canvas: Canvas, step: () => Promise<void>) {
+	await step();
+	await archieFinished(canvas);
+	// Reading time before the next step.
+	await new Promise((resolve) => setTimeout(resolve, 2_000));
 }
 
 /**
- * A whole conversation played out on its own, from an empty chat: a person types at a human pace, waits for Archie,
- * reads, and replies. Watch it in Storybook; it's left out of `npm test` because it runs for about a minute.
+ * The whole conversation played out on its own, from an empty chat: the prompt, the clarifying questions, the blueprint,
+ * Generate Prototype, a change, an unclear message and a failure with Retry. Watch it in Storybook; it's left out of
+ * `npm test` because it runs for a few minutes.
  */
 export const SimulatedConversation: Story = {
 	tags: ["!test"],
@@ -97,30 +373,25 @@ export const SimulatedConversation: Story = {
 	},
 	play: async ({ canvas }) => {
 		const person = userEvent.setup({ delay: 45 });
-		const composer = canvas.getByRole("textbox", { name: "Message Archie" });
-		for (const turn of personTurns) {
-			await person.type(composer, `${turn}{Enter}`);
-			await archieFinished(canvas);
-			// Reading time before the next message.
-			await new Promise((resolve) => setTimeout(resolve, 2_000));
-		}
-	},
-};
+		const composer = () => canvas.getByRole("combobox", { name: "Message Archie" });
+		const type = (text: string) => person.type(composer(), `${text}{Enter}`);
 
-/**
- * The sample Archie at full speed, for testing the reply flow.
- * Test: sending a question shows the person's message and Archie's answer, then clears the status and frees Send.
- */
-export const ArchieReplies: Story = {
-	args: {
-		data: sampleProjectWithReply,
-		respond: createSampleArchie({ statusMs: 0, wordMs: 0 }),
-	},
-	play: async ({ canvas, userEvent }) => {
-		await userEvent.type(canvas.getByRole("textbox", { name: "Message Archie" }), "What's a database relationship?{Enter}");
-		await expect(canvas.getByRole("log")).toHaveTextContent("What's a database relationship?");
-		await archieFinished(canvas);
-		await expect(canvas.getByRole("log")).toHaveTextContent("That's a one-to-many relationship.");
-		await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
+		await act(canvas, () => type("Create an e-commerce store selling high-end accessories for road bikes."));
+		for (const [index, question] of blueprint.clarifyingQuestions.entries()) {
+			const last = index === blueprint.clarifyingQuestions.length - 1;
+			const pick = () => person.click(option(canvas, question.options[0]));
+			if (last) {
+				await act(canvas, pick);
+			} else {
+				await pick();
+				await new Promise((resolve) => setTimeout(resolve, 1_200));
+			}
+		}
+		await act(canvas, () => person.click(canvas.getByRole("button", { name: "Generate Prototype" })));
+		await act(canvas, () => type("Change the accent color to green"));
+		await act(canvas, () => type("make it better"));
+		await act(canvas, () => person.click(option(canvas, "Checkout")));
+		await act(canvas, () => type("Connect Stripe"));
+		await act(canvas, () => person.click(canvas.getByRole("button", { name: "Retry connecting Stripe" })));
 	},
 };
