@@ -277,10 +277,13 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 		}
 	}
 
-	/** Starts Archie's turn for a request. */
+	/** Starts Archie's turn for a request. Messages carry where the project stands (blueprint drafted, app built). */
 	function request(next: ArchieRequest) {
 		if (!respond) {
 			return;
+		}
+		if (next.kind === "message") {
+			next = { ...next, stage: { blueprint: plan.revealed >= planSections, built: currentVersion(thread) > 0 } };
 		}
 		const turn = newTurn(Date.now());
 		activeTurn.current = turn.id;

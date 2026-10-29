@@ -136,8 +136,16 @@ type ArchieEvent =
 	| { type: "blueprint"; reveal: number }
 	| { type: "done" };
 
+/**
+ * Where the project stands when a message is sent, so Archie only offers what exists: no design changes before anything
+ * is generated (prds/chat-behavior-system.md rule 4).
+ */
+type ProjectStage = { blueprint: boolean; built: boolean };
+
 /** What the person asked for: a message, or restoring an earlier version (not a message, so no bubble). */
-type ArchieRequest = { kind: "message"; text: string } | { kind: "restore"; version: number; current: number };
+type ArchieRequest =
+	| { kind: "message"; text: string; stage?: ProjectStage }
+	| { kind: "restore"; version: number; current: number };
 
 /** Answers one request by calling `emit` for each event, and returns a function that stops it. Stands in for Archie's backend. */
 type ArchieResponder = (request: ArchieRequest, emit: (event: ArchieEvent) => void) => () => void;
@@ -496,6 +504,7 @@ export {
 	type FileChange,
 	type NextStep,
 	type PersonMessage,
+	type ProjectStage,
 	type QuestionsBlock,
 	type SentAnswers,
 	type Separator,

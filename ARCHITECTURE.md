@@ -51,7 +51,7 @@ State, all in `Project`:
 
 How Archie answers:
 
-- `respond` (an `ArchieResponder`) stands in for Archie's backend. `Project` calls it with an `ArchieRequest` (a message, or restoring a version) and gets back a function that stops it. A thread that opens on the person's message is answered on load.
+- `respond` (an `ArchieResponder`) stands in for Archie's backend. `Project` calls it with an `ArchieRequest` (a message, carrying the project's `stage`: blueprint drafted, app built; or restoring a version) and gets back a function that stops it. A thread that opens on the person's message is answered on load.
 - The responder sends `ArchieEvent`s (`project/chat-model.ts`, an extension of the progress PRD's event model §11). `applyEvent()` turns each one into a change to the current turn: a status, a step in the live feed under it (`ArchieTurn.feed`, shown by `ActivityFeed`, the latest 2), a thought, streamed text, questions, a progress line, proposed actions, files and the file being written, a version, a note or an error. `blueprint` and a build's `credits` change the page instead. `done` ends the turn.
 - Times ("Thought for 3s", "Blueprint generated · 7s", "Worked for 6s") are measured from the events' real timestamps, never scripted.
 - Slash commands: the page passes `commands` to PromptComposer (the slash button sits after attach). A sent command ("/theme blue") is a message like any other; the sample responder expands it to the request it stands for (`expandCommand()` in `sample-archie.ts`).
@@ -70,7 +70,7 @@ How Archie answers:
 
 | File | Holds | Used by |
 | --- | --- | --- |
-| `project/sample-archie.ts` | `createSampleArchie({ pace })`: the scripted responder for the road bike store (spec §7). `stepsFor()` gives a request's timed events. It checks first whether a message reads as words (`unreadable()`); gibberish and anything it doesn't recognize get a clarifying question (rule 4). Each responder has a memory, so an unreadable answer to a clarifying question is asked again and the blueprint waits for a clear one. `{ pace: 0 }` answers at once for tests | `project.stories.tsx`, passed in as `respond`; `sample-project.ts` |
+| `project/sample-archie.ts` | `createSampleArchie({ pace })`: the scripted responder for the road bike store (spec §7). `stepsFor()` gives a request's timed events. It checks first whether a message reads as words (`unreadable()`); gibberish and anything it doesn't recognize get a clarifying question (rule 4). Each scripted turn says what it `needs` (a blueprint, or a built app); without it, Archie says so instead (`notYet()`), so nothing about design is offered before anything is generated. Questions on refining the blueprint get `refineGuide()`. Each responder has a memory, so an unreadable answer to a clarifying question is asked again and the blueprint waits for a clear one. `{ pace: 0 }` answers at once for tests | `project.stories.tsx`, passed in as `respond`; `sample-project.ts` |
 | `project/sample-project.ts` | `sampleProject` (the prompt, Archie about to answer), `sampleProjectWithReply` (questions waiting), `sampleBlueprintReady` (Plan full, CTAs waiting), `sampleVersionHistory` (two versions, two days apart) and `sampleNewProject` (an empty chat). Each thread replays the script on a simulated clock, so it matches the live conversation | `project.stories.tsx`, passed in as `data` |
 | `@/sample-data/road-bike-store` | The blueprint (Plan's content, the clarifying questions and their answers) | `sample-project.ts` (as `data.blueprint`), `sample-archie.ts` |
 

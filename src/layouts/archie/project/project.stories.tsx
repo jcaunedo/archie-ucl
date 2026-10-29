@@ -200,6 +200,30 @@ export const ChangeAnswers: Story = {
 };
 
 /**
+ * Before anything is generated (the blueprint is ready, nothing built).
+ * Test: "how to updated my user types?" gets a guide to editing them in Plan and the order to review the blueprint in;
+ * a design change gets "nothing's been generated yet", with next steps, never design options.
+ */
+export const BeforeBuilding: Story = {
+	args: {
+		data: sampleBlueprintReady,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		const composer = canvas.getByRole("combobox", { name: "Message Archie" });
+		await userEvent.type(composer, "how to updated my user types?{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("Your user types live in Plan");
+		await expect(canvas.getByRole("log")).toHaveTextContent("Before you generate the app");
+
+		await userEvent.type(composer, "Change the accent color to green{Enter}");
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("Nothing's been generated yet");
+		await expect(canvas.queryByRole("button", { name: /Change the design$/ })).not.toBeInTheDocument();
+	},
+};
+
+/**
  * The blueprint is drafted: Plan is full and Archie proposes two ways to build (rule 5).
  * Test: Plan lists every module; choosing Generate Prototype builds Version 1 and ends with a "What's next" card.
  */
@@ -254,7 +278,7 @@ export const UnclearMessage: Story = {
 		await userEvent.type(composer, "asdf red qwer{Enter}");
 		await archieFinished(canvas);
 		const log = canvas.getByRole("log").textContent ?? "";
-		await expect(garbledReplies.some((reply) => log.includes(reply))).toBe(true);
+		await expect(garbledReplies.some(({ text }) => log.includes(text))).toBe(true);
 		await expect(canvas.queryByRole("group", { name: "What would you like to do?" })).not.toBeInTheDocument();
 
 		await userEvent.type(composer, "Translate the store into French{Enter}");

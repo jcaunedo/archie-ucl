@@ -1,6 +1,6 @@
 import { blueprint } from "@/sample-data/road-bike-store";
 
-import type { ArchieEvent, ArchieRequest, ArchieResponder, FileChange, NextStep } from "./chat-model";
+import type { ArchieEvent, ArchieRequest, ArchieResponder, FileChange, NextStep, ProjectStage } from "./chat-model";
 import { answersIntro } from "./project";
 
 // A scripted Archie for the Project stories: it plays the backend's part for the road bike store, sending the events a
@@ -362,10 +362,10 @@ type Section = keyof typeof sections;
 
 /** Which part of the blueprint a question is about, if it names one. */
 function sectionIn(text: string): Section | undefined {
-	if (/user ?types?|roles?|personas?/i.test(text)) return "user types";
-	if (/modules?/i.test(text)) return "modules";
-	if (/(core )?services?/i.test(text)) return "core services";
-	if (/integrations?/i.test(text)) return "integrations";
+	if (/\buser ?types?\b|\broles?\b|\bpersonas?\b/i.test(text)) return "user types";
+	if (/\bmodules?\b/i.test(text)) return "modules";
+	if (/\b(core )?services?\b/i.test(text)) return "core services";
+	if (/\bintegrations?\b/i.test(text)) return "integrations";
 	return undefined;
 }
 
@@ -408,18 +408,25 @@ Changes are quick now and take longer once there's code. When it looks right, st
 }
 
 /** The scripted turns. The first match wins, so the order matters. */
-const sampleTurns: { match: RegExp; steps: (text: string) => Step[] }[] = [
+const sampleTurns: {
+	match: RegExp;
+	steps: (text: string) => Step[];
+	/** What has to exist first: a drafted blueprint, or a built app. Without it, Archie says so (rule 4). */
+	needs?: "blueprint" | "built";
+}[] = [
 	{ match: new RegExp(`^${answersIntro}`), steps: () => draftBlueprint },
 	{ match: /\b(create|build|make)\b.*\b(app|store|shop)\b/i, steps: () => clarify },
 	{
 		// "How do I update my user types?", "how can I refine my specs", "where do I edit the modules?"
+		needs: "blueprint",
 		match:
-			/\b(how|where|what's the best way|can i)\b.*\b(update|edit|change|refine|improve|add|remove|rename|review)\b.*\b(user ?types?|roles?|personas?|modules?|services?|integrations?|specs?|blueprint|plan|requirements?)\b|\brefine\b.*\b(specs?|blueprint|plan|requirements?)\b/i,
+			/\b(how|where|what's the best way|can i)\b.*\b(updat|edit|chang|refin|improv|add|remov|renam|review)\w*\b.*\b(user ?types?|roles?|personas?|modules?|services?|integrations?|specs?|blueprint|plan|requirements?)\b|\brefine\b.*\b(specs?|blueprint|plan|requirements?)\b/i,
 		steps: (text) => refineGuide(text),
 	},
-	{ match: /^generate prototype$/i, steps: () => build(false) },
-	{ match: /^generate full stack application$/i, steps: () => build(true) },
+	{ needs: "blueprint", match: /^generate prototype$/i, steps: () => build(false) },
+	{ needs: "blueprint", match: /^generate full stack application$/i, steps: () => build(true) },
 	{
+		needs: "built",
 		match: /^retry connecting stripe$/i,
 		steps: () => [
 			wait(0, { type: "progress", id: "stripe", label: "Connecting Stripe…", doneLabel: "Stripe connected" }),
@@ -433,6 +440,7 @@ const sampleTurns: { match: RegExp; steps: (text: string) => Step[] }[] = [
 		],
 	},
 	{
+		needs: "built",
 		match: /\b(stripe|payments?)\b/i,
 		steps: () => [
 			wait(0, { type: "status", label: "Configuring payments…" }),
@@ -455,6 +463,7 @@ const sampleTurns: { match: RegExp; steps: (text: string) => Step[] }[] = [
 		],
 	},
 	{
+		needs: "built",
 		match: /\bcontrast\b/i,
 		steps: () => [
 			wait(0, { type: "status", label: "Thinking…" }),
@@ -475,8 +484,9 @@ Want me to darken them a little for more room?`),
 			wait(0, { type: "done" }),
 		],
 	},
-	{ match: /\b(colou?r|theme|palette|green|teal|blue|purple|red|orange)\b/i, steps: (text) => recolor(text) },
+	{ needs: "built", match: /\b(colou?r|theme|palette|green|teal|blue|purple|red|orange)\b/i, steps: (text) => recolor(text) },
 	{
+		needs: "built",
 		match: /\bwishlist\b/i,
 		steps: () =>
 			feature(
@@ -487,6 +497,7 @@ Want me to darken them a little for more room?`),
 			),
 	},
 	{
+		needs: "built",
 		match: /\breviews?\b/i,
 		steps: () =>
 			feature(
@@ -498,6 +509,7 @@ Want me to darken them a little for more room?`),
 			),
 	},
 	{
+		needs: "built",
 		match: /\bgift cards?\b/i,
 		steps: () =>
 			feature(
@@ -515,6 +527,7 @@ Want me to darken them a little for more room?`),
 			),
 	},
 	{
+		needs: "blueprint",
 		match: /\bfit check\b/i,
 		steps: () =>
 			answer(
@@ -522,6 +535,7 @@ Want me to darken them a little for more room?`),
 			),
 	},
 	{
+		needs: "blueprint",
 		match: /^(ask about my app|explain my app)$/i,
 		steps: () =>
 			answer(
@@ -529,10 +543,12 @@ Want me to darken them a little for more room?`),
 			),
 	},
 	{
+		needs: "built",
 		match: /^add a feature$/i,
 		steps: () => ask("Happy to.", "Which feature do you want to add?", ["A wishlist", "Product reviews", "Gift cards"]),
 	},
 	{
+		needs: "built",
 		match: /^(the visual design|change the design)$/i,
 		steps: () =>
 			change({
@@ -550,6 +566,7 @@ Want me to darken them a little for more room?`),
 			}),
 	},
 	{
+		needs: "built",
 		match: /^product pages$/i,
 		steps: () =>
 			change({
@@ -566,6 +583,7 @@ Want me to darken them a little for more room?`),
 			}),
 	},
 	{
+		needs: "built",
 		match: /^checkout$/i,
 		steps: () =>
 			change({
@@ -582,6 +600,7 @@ Want me to darken them a little for more room?`),
 			}),
 	},
 	{
+		needs: "built",
 		match: /^remove the cart icon from the header$/i,
 		steps: () =>
 			change({
@@ -595,6 +614,7 @@ Want me to darken them a little for more room?`),
 			}),
 	},
 	{
+		needs: "built",
 		match: /^remove the cart and checkout entirely$/i,
 		steps: () => [
 			wait(0, { type: "status", label: "Thinking…" }),
@@ -611,6 +631,7 @@ Want me to darken them a little for more room?`),
 		],
 	},
 	{
+		needs: "built",
 		match: /^remove cart and checkout$/i,
 		steps: () =>
 			change({
@@ -626,10 +647,12 @@ Want me to darken them a little for more room?`),
 	},
 	{ match: /^keep them$/i, steps: () => answer("Okay, nothing changed.") },
 	{
+		needs: "built",
 		match: /\b(better|improve|nicer)\b/i,
 		steps: () => ask("I can improve a few things.", "Which one do you mean?", ["The visual design", "Product pages", "Checkout"]),
 	},
 	{
+		needs: "built",
 		match: /\bremove\b.*\bcart\b/i,
 		steps: () =>
 			ask('"Remove the cart" could mean two different changes.', "Which one do you want?", [
@@ -663,27 +686,76 @@ function unreadable(text: string) {
  * play on the project (a bike store). Never blaming the person. One at random, never the same twice in a row, so it
  * doesn't feel canned (rule 4). The one place Archie's voice gets playful (DESIGN.md "Brand voice").
  */
-const garbledReplies = [
-	"That message took the scenic route and arrived in pieces. What would you like to build next?",
-	"I tried every gear and couldn't get that one moving. Tell me what you have in mind?",
-	"That one slipped its chain. Say it another way, and we'll get rolling again.",
-	"I read that three times and it's still a mystery to me. What should we work on?",
-	"Even the fit check couldn't match that one to anything. Want to try again in a few words?",
-	"My decoder ring is out for a tune-up. Could you say that differently? A change, a question, or / for ideas all work.",
-	"Interesting mix of letters! What did you mean to ask? Something like \"add a wishlist\" works great.",
-	"That one rode off before I could catch it. What would you like to change in Paceline Supply?",
+const garbledReplies: { text: string; needs?: "built" }[] = [
+	{ text: "That message took the scenic route and arrived in pieces. What would you like to build?" },
+	{ text: "I tried every gear and couldn't get that one moving. Tell me what you have in mind?" },
+	{ text: "That one slipped its chain. Say it another way, and we'll get rolling again." },
+	{ text: "I read that three times and it's still a mystery to me. What should we work on?" },
+	{ text: "My decoder ring is out for a tune-up. Could you say that differently? A question, or / for ideas, both work." },
+	{
+		text: "Interesting mix of letters! What did you mean to ask? Something like \"add a wishlist\" works great.",
+		needs: "built",
+	},
+	{ text: "That one rode off before I could catch it. What would you like to change in Paceline Supply?", needs: "built" },
+	{ text: "Even the fit check couldn't match that one to anything. Want to try again in a few words?", needs: "built" },
 ];
 
-function garbled(memory: Memory): Step[] {
-	const choices = garbledReplies.filter((reply) => reply !== memory.lastGarbled);
+function garbled(memory: Memory, stage: ProjectStage): Step[] {
+	// Replies that talk about changing the app only once there's an app to change.
+	const choices = garbledReplies
+		.filter(({ needs }) => !needs || stage.built)
+		.map(({ text }) => text)
+		.filter((reply) => reply !== memory.lastGarbled);
 	const reply = choices[Math.floor(Math.random() * choices.length)];
 	memory.lastGarbled = reply;
 	return [wait(0, { type: "status", label: "Thinking…" }), wait(700, { type: "text", text: "" }), ...say(reply), wait(0, { type: "done" })];
 }
 
-/** A clear message the script doesn't know: Archie asks what the person wants, with options, not a guess (rule 4). */
-const unclear = () =>
-	ask("I'm not sure what you mean.", "What would you like to do?", ["Change the design", "Add a feature", "Ask about my app"]);
+/**
+ * A clear message the script doesn't know: Archie asks what the person wants, with options that exist at this stage,
+ * not a guess (rule 4). Before a blueprint there's nothing to offer yet, so it asks what to build.
+ */
+function unclear(stage: ProjectStage): Step[] {
+	if (stage.built) {
+		return ask("I'm not sure what you mean.", "What would you like to do?", ["Change the design", "Add a feature", "Ask about my app"]);
+	}
+	if (stage.blueprint) {
+		return ask("I'm not sure what you mean.", "What would you like to do?", [
+			"Refine the blueprint",
+			"Generate Prototype",
+			"Ask about my app",
+		]);
+	}
+	return answer(
+		"I'm not sure what you mean. Tell me what you'd like to build, like \"An online store for road bike accessories\", and I'll start with a few questions.",
+	);
+}
+
+/**
+ * A request for something that doesn't exist yet: a design or feature change before anything is generated, or building
+ * before there's a blueprint. Archie says what's missing and what to do first (rule 4), never offering design changes
+ * on nothing.
+ */
+function notYet(stage: ProjectStage): Step[] {
+	if (stage.blueprint) {
+		return [
+			wait(0, { type: "status", label: "Thinking…" }),
+			wait(800, { type: "text", text: "" }),
+			...say(
+				"Nothing's been generated yet, so there's no design or code to change. You can shape this in the blueprint now, or generate the app first and then change it.",
+			),
+			next([
+				{ label: "Refine the blueprint", description: "See how to review and edit it in Plan", recommended: true },
+				nextSteps.prototype,
+				nextSteps.fullStack,
+			]),
+			wait(0, { type: "done" }),
+		];
+	}
+	return answer(
+		"There's nothing to change yet. Tell me what you'd like to build, and I'll start with a few questions and a blueprint.",
+	);
+}
 
 function restore(version: number, current: number): Step[] {
 	return [
@@ -768,10 +840,19 @@ function stepsFor(request: ArchieRequest, memory: Memory = {}): Step[] {
 		return draftBlueprint;
 	}
 
+	// Seeded threads replay without a stage: everything they reach already exists.
+	const stage = request.stage ?? { blueprint: true, built: true };
 	if (unreadable(text)) {
-		return garbled(memory);
+		return garbled(memory, stage);
 	}
-	return (sampleTurns.find(({ match }) => match.test(text))?.steps ?? unclear)(text);
+	const turn = sampleTurns.find(({ match }) => match.test(text));
+	if (!turn) {
+		return unclear(stage);
+	}
+	if ((turn.needs === "blueprint" && !stage.blueprint) || (turn.needs === "built" && !stage.built)) {
+		return notYet(stage);
+	}
+	return turn.steps(text);
 }
 
 /** A responder that plays the script. Pass `{ pace: 0 }` in tests to answer at once. */
