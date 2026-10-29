@@ -79,7 +79,7 @@ The design system is split across two files:
 - **Tokens** (`theme.css`) come only from `archielabs.ds`, Archie modes only.
 - **Components** can come from either file. Shared components come from `archielabs.ds` and Archie-only ones from `archie.ds`. Both land in the same `src/components/<category>/` folders. A component in `archie.ds` that overrides a master component wins for UCL.
 - ⚠️ If `archie.ds` uses a variable that isn't in the master's `semantic` collection, flag it before adding a token. Archie-only tokens must not leak into the shared master.
-- **Status (Oct 28, 2026):** `archie.ds` now also holds Button (node `36:3337`, moved from `archielabs.ds`), MainNav, topbar, prompt-composer and chat-composer. Button's variables still come from the master's `semantic` collection. Values from `archielabs.ds` are always read in its **Archie** mode.
+- **Status (Oct 28, 2026):** `archie.ds` now also holds Button (node `36:3337`, moved from `archielabs.ds`), MainNav, topbar, prompt-composer and chat-composer. Oct 29, 2026: prompt-alert (node `51:6098`). Button's variables still come from the master's `semantic` collection. Values from `archielabs.ds` are always read in its **Archie** mode.
 - **Status (Oct 20, 2026):** `archie.ds` uses `archielabs.ds` as a library and has no variables of its own. Its first components are the Sidebar family (page "Sidebar": `sidebar`, `sidebar-menu-button`, `sidebar-menu-list`, `account-switcher`). Their old `tokens`/`foundation` library bindings were rebound to `archielabs.ds` `semantic`/`primitives` (0 left).
 - ⚠️ **Constraint:** `archielabs.ds` hides its `primitives` → `radius/*` from publishing, so `archie.ds` uses the `semantic` radii (`radius/menu/item` 6, `radius/default` 8). There's no published 4px radius: the icon buttons in the Sidebar sets keep a raw 4px until one is added.
 
@@ -187,7 +187,7 @@ export { Button, buttonVariants } from "@/components/buttons/button";
 Mirror these names when a new component has the same concept. Keep this list current when components are added.
 
 - **Button** (`buttons/button`):
-  - `variant`: `default` | `secondary` | `outline` | `ghost` | `link` | `destructive` | `destructive-secondary` (Figma Style · Tone, DESIGN.md "Button")
+  - `variant`: `default` | `neutral` | `secondary` | `outline` | `ghost` | `link` | `destructive` | `destructive-secondary` (Figma Style · Tone, DESIGN.md "Button"). `neutral` (added 2026-10-29) is Solid with `tone/neutral/neutral`, which Figma draws as an override
   - `size`: `xs` (24) | `sm` (28) | `md` (32, default) | `lg` (36) | `xl` (40), and `icon-xs` … `icon-xl` (Figma Size and Type). Renamed 2026-10-28: breaking
   - Mark an icon beside the label `data-icon='inline-start'` or `'inline-end'`: that side gets Figma's tighter padding
   - `asChild` renders the button styles on its child (use for links)
@@ -232,6 +232,8 @@ Mirror these names when a new component has the same concept. Keep this list cur
   - The label is the children; replace it in place. `role='status'`. A highlight sweeps across it (`pendingTextVariants`) while the icon, a ball, bounces with gravity and squash and stretch; both are still under reduced motion
   - `ActivityIndicatorIcon`: the bouncing ball on its own, Archie's one activity icon. Use it wherever Archie shows activity (a running step, a file being written); `animate={false}` shows it still, a dot centered on the text, for finished activity ("Thought for 3s"). Takes the text color
   - Only the PRD's Active state exists; Default, Completed and Failed wait for Figma
+- **PromptAlert** (`feedback/prompt-alert`): Archie asking permission before it acts (Figma "prompt-alert" in `archie.ds`; progress PRD FR-09). Parts after shadcn's Alert: `PromptAlert` (`role='alert'`), `PromptAlertTitle` (the hand icon is built in), `PromptAlertDescription`, `PromptAlertActions`
+  - No `variant` or `size`. Apps pass the Buttons: Deny `outline` and Allow `neutral`, both `size='sm'`
 - **Typography** (`typography/`, the category folder itself):
   - `size`: `xs` | `sm` | `base` | `lg` | `xl` | `2xl` | `3xl` | `4xl` | `5xl` | `6xl` | `7xl` (the `--text-*` scale)
   - `weight`: `regular` | `medium` | `semibold` | `bold` | `black`

@@ -1,6 +1,6 @@
 import { blueprint } from "@/sample-data/road-bike-store";
 
-import type { ArchieEvent, ArchieRequest, ArchieResponder, FileChange } from "./chat-model";
+import type { ArchieEvent, ArchieRequest, ArchieResponder, FileChange, NextStep } from "./chat-model";
 import { answersIntro } from "./project";
 
 // A scripted Archie for the Project stories: it plays the backend's part for the road bike store, sending the events a
@@ -23,6 +23,25 @@ const say = (text: string): Step[] => text.split(/(?<=\s)/).map((chunk) => wait(
 
 /** Steps in the live feed under Archie's status, one every `every` ms (prds/chat-behavior-system.md rule 14). */
 const steps = (labels: string[], every = 700): Step[] => labels.map((label) => wait(every, { type: "step", label }));
+
+/** "What's next" after an update: the steps the sample can carry out, the first one Archie recommends. */
+const next = (steps: NextStep[]): Step => wait(200, { type: "actions", steps });
+
+const nextSteps = {
+	prototype: {
+		label: "Generate Prototype",
+		description: "A clickable frontend with sample data, quick to review",
+		recommended: true,
+	},
+	fullStack: { label: "Generate Full Stack Application", description: "Frontend, backend, database and sign-in" },
+	wishlist: { label: "Add a wishlist", description: "Customers save products and hear when they're back in stock" },
+	reviews: { label: "Add product reviews", description: "Customers rate and review what they bought" },
+	stripe: { label: "Connect Stripe", description: "Take card payments at checkout, in USD and CAD" },
+	green: { label: "Change the accent color to green", description: "Try a different look across the store" },
+	contrast: { label: "Check color contrast", description: "Make sure text stays readable everywhere" },
+} satisfies Record<string, NextStep>;
+
+const recommend = (step: NextStep): NextStep => ({ ...step, recommended: true });
 
 /** Streams a file into the files block line by line. */
 const write = (id: string, path: string, code: string): Step[] => [
@@ -172,8 +191,8 @@ ${blueprint.name} sells its own stock from one warehouse to the US and Canada, w
 - **${blueprint.coreServices.length} core services:** ${list(blueprint.coreServices)}
 - **${blueprint.integrations.length} integrations:** ${list(blueprint.integrations)}
 
-Review and edit it in Plan, or generate the app now.`),
-	wait(200, { type: "actions", options: ["Generate Prototype", "Generate Full Stack Application"] }),
+Review and edit it in Plan, or start building. A prototype is the quickest way to see it working.`),
+	next([nextSteps.prototype, nextSteps.fullStack]),
 	wait(0, { type: "done" }),
 ];
 
@@ -208,7 +227,8 @@ function build(fullStack: boolean): Step[] {
 				? "Version 1 is ready: the storefront, the catalog with the fit check, My Garage, cart and checkout, and the admin dashboard, on a backend with its database, API and sign-in. Open Frontend to try it."
 				: "Version 1 is ready: the storefront, the catalog with the fit check, My Garage, cart and checkout, and the admin dashboard. Open Frontend to try it.",
 		),
-		wait(200, { type: "suggestions", items: ["Add a wishlist", "Change the accent color to green", "Connect Stripe"] }),
+		...say("\n\nWhen it looks right, here's what I'd do next."),
+		next([recommend(nextSteps.stripe), nextSteps.wishlist, nextSteps.green]),
 		wait(0, { type: "done" }),
 	];
 }
@@ -222,6 +242,7 @@ function change({
 	title,
 	summary,
 	credits,
+	then = [recommend(nextSteps.stripe), nextSteps.reviews, nextSteps.contrast],
 }: {
 	thought: string[];
 	intro: string;
@@ -230,6 +251,8 @@ function change({
 	title: string;
 	summary: string;
 	credits: number;
+	/** "What's next" after the change; none when nothing obvious follows. */
+	then?: NextStep[];
 }): Step[] {
 	return [
 		wait(0, { type: "status", label: "Thinking…" }),
@@ -243,6 +266,7 @@ function change({
 		wait(400, { type: "finish", id: "change", state: "done", credits }),
 		wait(200, { type: "version", title }),
 		...say(summary),
+		...(then.length > 0 ? [next(then)] : []),
 		wait(0, { type: "done" }),
 	];
 }
@@ -264,7 +288,7 @@ const answer = (text: string): Step[] => [
 	wait(0, { type: "done" }),
 ];
 
-const feature = (name: string, intro: string, paths: string[], summary: string): Step[] =>
+const feature = (name: string, intro: string, paths: string[], summary: string, then?: NextStep[]): Step[] =>
 	change({
 		thought: [`Found where ${name} fit in the blueprint`, "Listed the screens and data it touches"],
 		intro,
@@ -276,6 +300,7 @@ const feature = (name: string, intro: string, paths: string[], summary: string):
 		title: `Added ${name}`,
 		summary,
 		credits: 9,
+		then,
 	});
 
 /** Colors `/theme` and "change the color" understand, as oklch hues. Anything else gets green. */
@@ -319,6 +344,7 @@ const sampleTurns: { match: RegExp; steps: (text: string) => Step[] }[] = [
 			...say(
 				"Stripe is connected in test mode. Checkout now takes card payments in USD and CAD, and Stripe Tax handles sales tax for both countries.",
 			),
+			next([recommend(nextSteps.wishlist), nextSteps.reviews]),
 			wait(0, { type: "done" }),
 		],
 	},
@@ -384,6 +410,7 @@ Want me to darken them a little for more room?`),
 				"I'll add product reviews: customers who bought a product can rate it and write a review, and the Store Administrator can hide a review.",
 				["src/modules/catalog/reviews.tsx", "src/modules/catalog/reviews.data.ts"],
 				"Done. Product pages show the average rating and reviews, newest first.",
+				[recommend(nextSteps.stripe), nextSteps.wishlist, nextSteps.contrast],
 			),
 	},
 	{
@@ -488,10 +515,14 @@ Want me to darken them a little for more room?`),
 		steps: () => [
 			wait(0, { type: "status", label: "Thinking…" }),
 			wait(900, { type: "text", text: "" }),
-			...say(
-				"That removes Cart & Checkout, so the store can't take orders anymore; shoppers could only browse. Do you want to go ahead?",
-			),
-			wait(200, { type: "actions", options: ["Remove cart and checkout", "Keep them"] }),
+			...say("Removing them changes what the store can do, so I'll check with you first."),
+			wait(200, {
+				type: "approval",
+				description:
+					"Remove Cart & Checkout. The store stops taking orders; shoppers can only browse. You can restore the current version later.",
+				allow: { label: "Allow", message: "Remove cart and checkout" },
+				deny: { label: "Deny", message: "Keep them" },
+			}),
 			wait(0, { type: "done" }),
 		],
 	},
@@ -506,6 +537,7 @@ Want me to darken them a little for more room?`),
 				title: "Removed cart and checkout",
 				summary: "Done. The store is browse-only now. Restore the previous version to bring checkout back.",
 				credits: 6,
+				then: [],
 			}),
 	},
 	{ match: /^keep them$/i, steps: () => answer("Okay, nothing changed.") },

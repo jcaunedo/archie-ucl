@@ -35,7 +35,7 @@ There's no separate shell file yet: `project/project.tsx` is the whole app frame
 | Part | File | What it does |
 | --- | --- | --- |
 | Topbar | `project/project.tsx` | `Topbar` with the logo and project switcher on the left, MainNav (`SegmentedControl`) in the middle, actions (with the live credit balance) and the account on the right |
-| Chat | `project/project.tsx` | `ChatPanel`, 440px wide: the thread (person messages, Archie's turns, day separators, the queue), follow-up chips above the composer, and `PromptComposer` |
+| Chat | `project/project.tsx` | `ChatPanel`, 440px wide: the thread (person messages, Archie's turns, day separators, the queue), and `PromptComposer` |
 | Canvas | `project/project.tsx`, `project/plan-canvas.tsx` | A `main` with a 48px header titled by the selected phase. Plan shows the blueprint (`PlanCanvas`); the other phases are still empty |
 
 State, all in `Project`:
@@ -44,7 +44,6 @@ State, all in `Project`:
 - `thread`: the conversation as `ThreadItem`s (`project/chat-model.ts`), seeded from `data.thread`. An Archie turn is one item holding its blocks in order.
 - `answering`: Archie's turn is running. It marks the thread `aria-busy` and gives the composer `onStop`, so its button is Stop, or "Add to queue" with a smaller Stop once there's text.
 - `queue`: messages sent while Archie works. Each shows in the thread with a remove button; the next one goes when the turn ends or is stopped.
-- `suggestions`: follow-up chips from Archie's last turn. Typing or sending hides them.
 - `plan`: how many Plan sections are drafted (`revealed`, 0 to 5) and whether Archie is still drafting. Seeded from `data.planRevealed`.
 - `credits`: the balance in the topbar, lowered by each build's credits.
 - Answers messages keep their questions and values (`PersonMessage.answers`), so they expand to show their questions.
@@ -53,7 +52,7 @@ State, all in `Project`:
 How Archie answers:
 
 - `respond` (an `ArchieResponder`) stands in for Archie's backend. `Project` calls it with an `ArchieRequest` (a message, or restoring a version) and gets back a function that stops it. A thread that opens on the person's message is answered on load.
-- The responder sends `ArchieEvent`s (`project/chat-model.ts`, an extension of the progress PRD's event model §11). `applyEvent()` turns each one into a change to the current turn: a status, a step in the live feed under it (`ArchieTurn.feed`, shown by `ActivityFeed`, the latest 2), a thought, streamed text, questions, a progress line, proposed actions, files and the file being written, a version, a note or an error. `suggestions`, `blueprint` and a build's `credits` change the page instead. `done` ends the turn.
+- The responder sends `ArchieEvent`s (`project/chat-model.ts`, an extension of the progress PRD's event model §11). `applyEvent()` turns each one into a change to the current turn: a status, a step in the live feed under it (`ArchieTurn.feed`, shown by `ActivityFeed`, the latest 2), a thought, streamed text, questions, a progress line, proposed actions, files and the file being written, a version, a note or an error. `blueprint` and a build's `credits` change the page instead. `done` ends the turn.
 - Times ("Thought for 3s", "Blueprint generated · 7s", "Worked for 6s") are measured from the events' real timestamps, never scripted.
 - Slash commands: the page passes `commands` to PromptComposer (the slash button sits after attach). A sent command ("/theme blue") is a message like any other; the sample responder expands it to the request it stands for (`expandCommand()` in `sample-archie.ts`).
 - The page handles what the person does: answering a question (by option or by typing while one is open), choosing a proposed action, Retry on an error, Restore on a version, Stop, and the queue. `chat-model.ts` has the pure functions for each (`answerQuestion`, `editQuestion`, `withAnswer`, `currentQuestion`, `settleBlock`, `stopTurn`). Questions keep one answer slot each, so a changed answer only clears the ones that depend on it (`ClarifyingQuestion.dependsOn`, from the blueprint's `dependsOn` ids).
@@ -87,5 +86,5 @@ Each one replaces a component UCL doesn't have yet. When it lands in UCL, swap i
 | `TopbarActions`'s notification dot | `project/parts.tsx` | A Badge or dot on Button (Figma "Show Red Dot") |
 | `TopbarActions`'s credits pie (`images/credits.svg`, always the same slice) | `project/parts.tsx` | A credits meter that draws the real balance (DESIGN.md "Topbar") |
 | `TopbarActions`, `ChatActions` | `project/parts.tsx` | Nothing: they're UCL Buttons holding the page's copy |
-| `ArchieText`, `ActivityFeed`, `ThoughtDisclosure`, `QuestionsCard`, `AnswersMessage`, `ProgressLine`, `ActionChips`, `FilesProcessed` (with the code stream), `VersionCard`, `ResponseActions`, `ErrorCard`, `Note`, `DaySeparator`, `QueueList`, `SuggestionChips`, `PromptStarters` | `project/chat-parts.tsx` | Their components in `archie.ds` (spec §4, §8). They come from Figma Archie-App, which isn't a design-system file |
+| `ArchieText`, `ActivityFeed`, `ApprovalPrompt` (wraps UCL `PromptAlert`), `ThoughtDisclosure`, `QuestionsCard`, `AnswersMessage`, `ProgressLine`, `NextSteps`, `FilesProcessed` (with the code stream), `VersionCard`, `ResponseActions`, `ErrorCard`, `Note`, `DaySeparator`, `QueueList`, `PromptStarters` | `project/chat-parts.tsx` | Their components in `archie.ds` (spec §4, §8). They come from Figma Archie-App, which isn't a design-system file |
 | `PlanCanvas` | `project/plan-canvas.tsx` | Plan's components in `archie.ds` (chips, section header, description card) |

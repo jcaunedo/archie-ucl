@@ -185,6 +185,7 @@ The rule matches real interactive elements and roles:
 | Figma | Code |
 | --- | --- |
 | Solid · Brand / Flat · Brand / Outlined · Neutral / Ghost · Neutral / Link · Brand / Solid · Destructive / Flat · Destructive | `variant`: `default` / `secondary` / `outline` / `ghost` / `link` / `destructive` / `destructive-secondary` |
+| Solid · Neutral (not in the Button set) | `variant`: `neutral`. Figma has no Solid · Neutral variant: prompt-alert's Allow and MainNav override Solid · Brand's fill with `tone/neutral/neutral`. Code makes it a variant so it's reused, not re-overridden: `neutral` fill, `neutral-foreground` label, hover mixes 20% black like the other solids, disabled uses the neutral disabled colors. Decision 2026-10-29. ⚠️ **Gap:** add Solid · Neutral to the Figma Button set |
 | Size xs · 24 / sm · 28 / md · 32 / lg · 36 / xl · 40, Type=Text | `size`: `xs` / `sm` / `md` (default) / `lg` / `xl` |
 | The same sizes, Type=Icon | `size`: `icon-xs` … `icon-xl`, with 12 / 14 / 16 / 18 / 20px icons |
 | `radius/button/xs` … `xl` (6 / 8 / 8 / 8 / 10px) | `rounded-button-xs` … `rounded-button-xl`, new tokens |
@@ -386,7 +387,7 @@ Any change to a type token (`--text-*`, `--font-weight-*`, `--font-*`) or to `ty
 - **Enter sends, Shift+Enter adds a line.** Enter that confirms an IME composition doesn't send. The message is trimmed; an empty one doesn't send. When uncontrolled, the box clears itself after sending.
 - **Send and voice:** decision 2026-10-28. Figma shows only the empty state, with a voice button. With `onVoice` set, an empty box shows voice mode ("Start voice mode", `AudioLines`); once there's text, the same button becomes Send (`ArrowUp`). Without `onVoice`, an empty box shows Send with `aria-disabled`, focusable but inactive (see Button). `pending` shows Button's pending state on Send and blocks Enter.
 - **Stop and queue (`onStop`):** decision 2026-10-29, from Figma Archie-App "Queue" frames (not `archie.ds`; prds/chat-behavior-system.md rule 7). While Archie works, the app passes `onStop`: an empty box shows Stop (a filled 12px square: solid, it reads larger than the 16px line icons beside it); with text, Send becomes "Add to queue" (`CornerDownRight`) with a smaller outline Stop before it. Submitting still calls `onSubmit`; the app queues the message. It replaces the earlier "Stop is a separate control" rule, because Figma puts Stop in Send's place.
-- **Slash commands (`commands`):** decision 2026-10-29: the same interaction as intercept-ucl's ChatComposer (its DESIGN.md "ChatComposer"), so the two products' composers behave alike. Figma's placeholder already says "type / for options". "/" at the start of the message, or the slash button (`PromptComposerCommands`, a ghost round button after attach, `accent` while the menu is open), opens the commands menu above the box: the menus' surface (`popover`, `border`, `rounded-lg`, `shadow-xl`, 4px padding), max 256px tall, fading and rising in like menus (`motionScale.popIn`, `motionDistance.subtle`, `enterTransition`). Items show "/name" medium and the description xs `muted-foreground`; the active one is `accent`. It filters by what's typed after the slash; ↑ ↓ move, Enter or Tab picks, Escape closes it without closing anything around the composer. Picking writes "/name " into the message (replacing the command being typed, or before the text there); acting on it is the app's job. The field is a combobox over the listbox (`aria-activedescendant`). ⚠️ **Gap:** the menu isn't in Figma; add it to `archie.ds`.
+- **Slash commands (`commands`):** decision 2026-10-29: the same interaction as intercept-ucl's ChatComposer (its DESIGN.md "ChatComposer"), so the two products' composers behave alike. Figma's placeholder already says "type / for options". "/" at the start of the message, or the slash button (`PromptComposerCommands`: Figma's 32px Ghost icon button with lucide `square-slash`, 5px after attach, `accent` while the menu is open; archie.ds `51:6099`, Figma update 2026-10-29), opens the commands menu above the box: the menus' surface (`popover`, `border`, `rounded-lg`, `shadow-xl`, 4px padding), max 256px tall, fading and rising in like menus (`motionScale.popIn`, `motionDistance.subtle`, `enterTransition`). Items show "/name" medium and the description xs `muted-foreground`; the active one is `accent`. It filters by what's typed after the slash; ↑ ↓ move, Enter or Tab picks, Escape closes it without closing anything around the composer. Picking writes "/name " into the message (replacing the command being typed, or before the text there); acting on it is the app's job. The field is a combobox over the listbox (`aria-activedescendant`). ⚠️ **Gap:** the menu isn't in Figma; add it to `archie.ds`.
 - **The button grows in when it changes role** (voice → Send, Stop → Add to queue): Motion's Swap pattern (`iconSwapVariants`) on the whole button, not on first render. Decision 2026-10-29.
 - **Colors:** Send and Add to queue are `brand` (decision 2026-10-29: the button that sends stands out once there's something to send). Voice and Stop are `tone/neutral/neutral` → `bg-neutral` with a `neutral-foreground` icon (Figma binds `on-brand`, the same value; see Segmented Control). The row's buttons use `icon/foreground` → `text-icon`. The border binds the old `colors/form/input`; UCL uses `input`, as for MainNav.
 
@@ -397,6 +398,19 @@ Any change to a type token (`--text-*`, `--font-weight-*`, `--font-*`) or to `ty
 ⚠️ **Gap:** the model picker ("Default ⌄") is a stand-in in the stories until Select or DropdownMenu exists.
 
 **How to apply:** give the textarea a `placeholder` and an `aria-label`, and every `PromptComposerButton` an `aria-label`. Put `PromptComposerSubmit` last in the footer's right-hand group.
+
+---
+
+## PromptAlert: Figma's prompt-alert (`src/components/feedback/prompt-alert/prompt-alert.tsx`)
+
+**Rule:** PromptAlert follows Figma's "prompt-alert" (`archie.ds`, node `51:6098`), with shadcn Alert's parts (decision 2026-10-29). It's Archie asking permission before a consequential action (progress PRD FR-09).
+
+- **Frame:** `background`, a 1px `foreground` border (dark on purpose: the one card in the thread that needs a decision), 12px corners (`rounded-xl`) and padding, Figma's effect "shadow-sm", whose values (0 1px 2px) are UCL's `shadow-xs`.
+- **Title:** lucide `hand` at 14px, flipped to point right as Figma draws it, 4px before the label, both `tone/destructive/destructive`, 14/20 regular (Figma's weight 400, not shadcn AlertTitle's medium).
+- **Description:** 14/20 `foreground`, 4px under the title. **Actions:** right-aligned, 8px apart, 8px under the description: Deny `outline`, Allow `neutral` (see Button), both `sm` · 28.
+- **Accessibility:** `role='alert'` (shadcn's), so it's announced once when it appears.
+
+**How to apply:** put the decision's consequence in the description, so Allow is an informed choice. After a decision, apps replace the buttons with the outcome (the Archie chat shows "Allowed" / "Denied").
 
 ---
 

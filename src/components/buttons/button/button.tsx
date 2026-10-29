@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import { pendingIconReducedVariants, pendingSpinnerVariants, useMotionPreference } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
-// Figma "Button" (archielabs.ds, node 41:604). Style · Tone → `variant`; Size and Type (Text or Icon) → `size`.
+// Figma "Button" (archie.ds, node 36:3337; it moved there from archielabs.ds 41:604). Style · Tone → `variant`; Size and Type (Text or Icon) → `size`.
 // States: Hover → `hover:not-aria-disabled:` (blocked buttons don't react), Disabled → `data-disabled:` (set for
 // `disabled`, and for `aria-disabled` while not pending), Loading → `pending`.
 const buttonVariants = cva(
@@ -25,6 +25,10 @@ const buttonVariants = cva(
 				// the neutral disabled colors, below).
 				default:
 					"bg-primary text-primary-foreground hover:not-aria-disabled:bg-[color-mix(in_srgb,var(--primary)_80%,black)] data-disabled:bg-brand-muted",
+				// Solid · Neutral: not in Figma's Button set; Figma overrides Solid · Brand with `tone/neutral/neutral` where
+				// it uses it (prompt-alert's Allow, MainNav). Hover darkens like the other solid fills (decision 2026-10-29).
+				neutral:
+					"bg-neutral text-neutral-foreground hover:not-aria-disabled:bg-[color-mix(in_srgb,var(--neutral)_80%,black)] data-disabled:bg-disabled data-disabled:text-foreground-subtle",
 				// Figma Solid · Destructive
 				destructive:
 					"bg-destructive text-destructive-foreground hover:not-aria-disabled:bg-[color-mix(in_srgb,var(--destructive)_80%,black)] data-disabled:bg-disabled data-disabled:text-foreground-subtle",

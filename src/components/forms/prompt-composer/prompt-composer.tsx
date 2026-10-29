@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp, AudioLines, CornerDownRight, Slash, Square } from "lucide-react";
+import { ArrowUp, AudioLines, CornerDownRight, Square, SquareSlash } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 import {
@@ -316,7 +316,10 @@ function PromptComposerButton({ className, size = "icon-sm", ...props }: PromptC
 
 type PromptComposerCommandsProps = Omit<PromptComposerButtonProps, "children" | "type" | "onClick">;
 
-/** The slash button: opens the commands menu, or closes it. Put it after attach. Needs `commands` on PromptComposer. */
+/**
+ * The slash button: opens the commands menu, or closes it. Figma prompt-composer (archie.ds 51:6099): a 32px Ghost icon
+ * button with lucide `square-slash`, 5px after attach. Needs `commands` on PromptComposer.
+ */
 function PromptComposerCommands({ className, ...props }: PromptComposerCommandsProps) {
 	const { menu } = usePromptComposer("PromptComposerCommands");
 
@@ -332,7 +335,7 @@ function PromptComposerCommands({ className, ...props }: PromptComposerCommandsP
 			className={cn("aria-expanded:bg-accent", className)}
 			{...props}
 		>
-			<Slash />
+			<SquareSlash />
 		</PromptComposerButton>
 	);
 }

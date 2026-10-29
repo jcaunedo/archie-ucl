@@ -9,6 +9,12 @@ type FileChange = { path: string; change: "new" | "modified" };
 /** A question with its options. `dependsOn`: the earlier questions (by index) whose answers decide this one. */
 type ClarifyingQuestion = { question: string; options: string[]; dependsOn?: number[] };
 
+/**
+ * Something the person can do next: its label (sent as their message when chosen), what it produces, and whether it's
+ * Archie's recommendation (at most one per card).
+ */
+type NextStep = { label: string; description?: string; recommended?: boolean };
+
 type ArchieBlock =
 	| { kind: "text"; id: string; text: string }
 	/** "Thought for 4s": what Archie did before answering, collapsed. */
@@ -40,8 +46,21 @@ type ArchieBlock =
 			startedAt: number;
 			seconds?: number;
 	  }
-	/** The actions Archie proposes and waits on (Suggest / Confirm / Execute). */
-	| { kind: "actions"; id: string; options: string[]; chosen?: string }
+	/** "What's next": the next steps Archie suggests, after an update (Suggest / Confirm / Execute, Follow-up Chips). */
+	| { kind: "actions"; id: string; steps: NextStep[]; chosen?: string }
+	/**
+	 * Archie asking permission before a consequential action (PromptAlert; progress PRD FR-09). Each choice sends its
+	 * message; once decided, the prompt shows the decision.
+	 */
+	| {
+			kind: "approval";
+			id: string;
+			title: string;
+			description: string;
+			allow: { label: string; message: string };
+			deny: { label: string; message: string };
+			decided?: "allow" | "deny";
+	  }
 	/** Files Archie writes. While running, `writing` is the file streaming in. */
 	| {
 			kind: "files";
@@ -87,7 +106,7 @@ type ThreadItem = PersonMessage | ArchieTurn | Separator;
 
 /**
  * What Archie sends while it works, after the progress PRD's event model (§11). Blocks with an `id` can be finished or
- * extended later; the others are added once. `suggestions`, `blueprint` and `credits` change the page, not the thread.
+ * extended later; the others are added once. `blueprint` and `credits` change the page, not the thread.
  */
 type ArchieEvent =
 	| { type: "status"; label: string }
@@ -98,7 +117,14 @@ type ArchieEvent =
 	| { type: "text"; text: string }
 	| { type: "questions"; questions: ClarifyingQuestion[]; single?: boolean; skippable?: boolean }
 	| { type: "progress"; id: string; label: string; doneLabel: string; failedLabel?: string }
-	| { type: "actions"; options: string[] }
+	| { type: "actions"; steps: NextStep[] }
+	| {
+			type: "approval";
+			title?: string;
+			description: string;
+			allow: { label: string; message: string };
+			deny: { label: string; message: string };
+	  }
 	| { type: "files"; id: string }
 	| { type: "file"; id: string; file: FileChange }
 	| { type: "writing"; id: string; path: string }
@@ -107,7 +133,6 @@ type ArchieEvent =
 	| { type: "version"; title: string }
 	| { type: "note"; text: string }
 	| { type: "error"; title: string; detail: string; retry?: string }
-	| { type: "suggestions"; items: string[] }
 	| { type: "blueprint"; reveal: number }
 	| { type: "done" };
 
@@ -200,7 +225,18 @@ function applyEvent(thread: ThreadItem[], turnId: string, event: ArchieEvent, no
 			);
 		case "actions":
 			return updateTurn(thread, turnId, (turn) =>
-				addBlock(turn, { kind: "actions", id: newId("actions"), options: event.options }),
+				addBlock(turn, { kind: "actions", id: newId("actions"), steps: event.steps }),
+			);
+		case "approval":
+			return updateTurn(thread, turnId, (turn) =>
+				addBlock(turn, {
+					kind: "approval",
+					id: newId("approval"),
+					title: event.title ?? "Ask permission",
+					description: event.description,
+					allow: event.allow,
+					deny: event.deny,
+				}),
 			);
 		case "files":
 			return updateTurn(thread, turnId, (turn) =>
@@ -380,7 +416,7 @@ function editQuestion(thread: ThreadItem[], blockId: string, index: number | und
 	return updateQuestions(thread, blockId, (block) => ({ ...block, editing: index }));
 }
 
-/** Marks a proposed action as chosen, or an error as retried, so its controls lock. */
+/** Marks a proposed action as chosen, an approval as decided ("allow" or "deny"), or an error as retried, so its controls lock. */
 function settleBlock(thread: ThreadItem[], blockId: string, chosen?: string): ThreadItem[] {
 	return thread.map((item) =>
 		item.kind === "archie"
@@ -395,6 +431,9 @@ function settleBlock(thread: ThreadItem[], blockId: string, chosen?: string): Th
 						}
 						if (block.kind === "error") {
 							return { ...block, retried: true };
+						}
+						if (block.kind === "approval" && (chosen === "allow" || chosen === "deny")) {
+							return { ...block, decided: chosen };
 						}
 						return block;
 					}),
@@ -455,6 +494,7 @@ export {
 	type ArchieTurn,
 	type ClarifyingQuestion,
 	type FileChange,
+	type NextStep,
 	type PersonMessage,
 	type QuestionsBlock,
 	type SentAnswers,

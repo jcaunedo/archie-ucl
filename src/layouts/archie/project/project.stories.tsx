@@ -201,7 +201,7 @@ export const ChangeAnswers: Story = {
 
 /**
  * The blueprint is drafted: Plan is full and Archie proposes two ways to build (rule 5).
- * Test: Plan lists every module; choosing Generate Prototype builds Version 1 and offers follow-ups.
+ * Test: Plan lists every module; choosing Generate Prototype builds Version 1 and ends with a "What's next" card.
  */
 export const BlueprintReady: Story = {
 	args: {
@@ -215,7 +215,9 @@ export const BlueprintReady: Story = {
 		await userEvent.click(canvas.getByRole("button", { name: "Generate Prototype" }));
 		await archieFinished(canvas);
 		await expect(canvas.getByText("Current version")).toBeInTheDocument();
-		await expect(canvas.getByRole("group", { name: "Suggested next steps" })).toBeInTheDocument();
+		// Archie's update ends with what's next: a card with the recommended step first.
+		const nextCard = within(canvas.getAllByRole("group", { name: "What's next" }).at(-1)!);
+		await expect(nextCard.getAllByRole("button")[0]).toHaveAccessibleName("Connect Stripe");
 	},
 };
 
@@ -261,6 +263,31 @@ export const UnclearMessage: Story = {
 		await userEvent.click(option(canvas, "Ask about my app"));
 		await archieFinished(canvas);
 		await expect(canvas.getByRole("log")).toHaveTextContent("How does the fit check work?");
+	},
+};
+
+/**
+ * Archie asks permission before a consequential change (PromptAlert, progress PRD FR-09).
+ * Test: an ambiguous request gets options; choosing the destructive one brings an approval prompt; Deny keeps
+ * everything and the prompt shows the decision.
+ */
+export const AskPermission: Story = {
+	args: {
+		data: sampleVersionHistory,
+		respond: createSampleArchie({ pace: 0 }),
+	},
+	play: async ({ canvas, userEvent }) => {
+		await userEvent.type(canvas.getByRole("combobox", { name: "Message Archie" }), "remove the cart{Enter}");
+		await archieFinished(canvas);
+		await userEvent.click(option(canvas, "Remove the cart and checkout entirely"));
+		await archieFinished(canvas);
+		const prompt = within(canvas.getByRole("alert"));
+		await expect(prompt.getByText("Ask permission")).toBeInTheDocument();
+		await expect(prompt.getByRole("button", { name: "Allow" })).toBeInTheDocument();
+		await userEvent.click(prompt.getByRole("button", { name: "Deny" }));
+		await archieFinished(canvas);
+		await expect(canvas.getByRole("log")).toHaveTextContent("Okay, nothing changed.");
+		await expect(prompt.getByText("Denied")).toBeInTheDocument();
 	},
 };
 

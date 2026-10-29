@@ -51,21 +51,21 @@ import {
 	type ThreadItem,
 } from "./chat-model";
 import {
-	ActionChips,
 	ActivityFeed,
+	ApprovalPrompt,
 	AnswersMessage,
 	ArchieText,
 	DaySeparator,
 	ElapsedTime,
 	ErrorCard,
 	FilesProcessed,
+	NextSteps,
 	Note,
 	ProgressLine,
 	PromptStarters,
 	QuestionsCard,
 	QueueList,
 	ResponseActions,
-	SuggestionChips,
 	ThoughtDisclosure,
 	VersionCard,
 } from "./chat-parts";
@@ -148,6 +148,7 @@ function ArchieTurnView({
 	onAnswer,
 	onEditAnswer,
 	onChoose,
+	onDecide,
 	onRetry,
 	onRestore,
 	onViewCode,
@@ -160,6 +161,8 @@ function ArchieTurnView({
 	/** Starts changing an answered question, or (`undefined`) keeps its answer. */
 	onEditAnswer: (blockId: string, index: number | undefined) => void;
 	onChoose: (blockId: string, option: string) => void;
+	/** Allow or Deny on an approval prompt: records the decision and sends its message. */
+	onDecide: (blockId: string, choice: "allow" | "deny", message: string) => void;
 	onRetry: (blockId: string, message: string) => void;
 	onRestore: (version: number) => void;
 	onViewCode: () => void;
@@ -197,7 +200,15 @@ function ArchieTurnView({
 				return <ProgressLine block={block} />;
 			case "actions":
 				return (
-					<ActionChips block={block} locked={!latest} onChoose={(option) => onChoose(block.id, option)} />
+					<NextSteps block={block} locked={!latest} onChoose={(step) => onChoose(block.id, step)} />
+				);
+			case "approval":
+				return (
+					<ApprovalPrompt
+						block={block}
+						active={latest && turn.state === "done"}
+						onDecide={(choice, message) => onDecide(block.id, choice, message)}
+					/>
 				);
 			case "files":
 				return <FilesProcessed block={block} onViewCode={onViewCode} />;
@@ -244,7 +255,6 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 	const [thread, setThread] = useState(data.thread);
 	const [answering, setAnswering] = useState(false);
 	const [queue, setQueue] = useState<string[]>([]);
-	const [suggestions, setSuggestions] = useState<string[]>([]);
 	const [plan, setPlan] = useState({ revealed: data.planRevealed ?? 0, drafting: false });
 	const [credits, setCredits] = useState(data.credits);
 	const stopAnswering = useRef<(() => void) | null>(null);
@@ -254,9 +264,7 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 	const waiting = !respond && thread.at(-1)?.kind === "person";
 
 	function handle(turnId: string, event: ArchieEvent) {
-		if (event.type === "suggestions") {
-			setSuggestions(event.items);
-		} else if (event.type === "blueprint") {
+		if (event.type === "blueprint") {
 			setPlan({ revealed: event.reveal, drafting: event.reveal < planSections });
 		} else if (event.type === "finish" && event.credits) {
 			setCredits((current) => current - event.credits!);
@@ -278,14 +286,12 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 		activeTurn.current = turn.id;
 		setThread((current) => [...current, turn]);
 		setAnswering(true);
-		setSuggestions([]);
 		stopAnswering.current = respond(next, (event) => handle(turn.id, event));
 	}
 
 	/** Sends a message: queued while Archie works (rule 7), otherwise delivered. */
 	function send(text: string) {
 		pinnedToEnd.current = true;
-		setSuggestions([]);
 		if (answering) {
 			setQueue((current) => [...current, text]);
 			return;
@@ -453,6 +459,10 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 											setThread((current) => settleBlock(current, blockId, option));
 											send(option);
 										}}
+										onDecide={(blockId, choice, message) => {
+											setThread((current) => settleBlock(current, blockId, choice));
+											send(message);
+										}}
 										onRetry={(blockId, message) => {
 											setThread((current) => settleBlock(current, blockId));
 											send(message);
@@ -479,18 +489,17 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 							)}
 						</ChatPanelBody>
 						<ChatPanelFooter>
-							{suggestions.length > 0 && !answering && <SuggestionChips items={suggestions} onPick={send} />}
 							{/* While Archie works, the button is Stop; typing turns it into Add to queue (rule 7). */}
 							<PromptComposer
 								onSubmit={send}
 								onStop={answering ? stop : undefined}
 								commands={commands}
-								onValueChange={(value) => value !== "" && setSuggestions([])}
 								onVoice={() => {}}
 							>
 								<PromptComposerTextarea placeholder='Message Archie or type / for options' aria-label='Message Archie' />
 								<PromptComposerFooter>
-									<div className='flex items-center gap-1'>
+									{/* Figma: attach, then the slash button, 5px apart. */}
+									<div className='flex items-center gap-[5px]'>
 										<PromptComposerButton aria-label='Attach files'>
 											<Plus />
 										</PromptComposerButton>

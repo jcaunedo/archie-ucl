@@ -81,13 +81,14 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 | Thought disclosure | "Thought for 12s ›", expands to what Archie did | Thought sheet "Thought", "Thought Expanded" | Chain of Thought, Progressive Disclosure | New part |
 | Clarification prompt | One question at a time: options A–D, "You decide", answered by click or by typing. Also used for an unclear message: the likely meanings as options | `3660:104046` (questions) | Human in the Loop | New part |
 | Progress line | A long step: "Creating project blueprint…" → "Blueprint generated · 1m 23s" | Blue print generation `2186:15254`, Result `2186:15400` | Tool Use | New part |
-| Confirmation (CTAs) | The actions Archie proposes, waiting for a choice | Result `2186:15400`, CTA-1/2/3 | Suggest / Confirm / Execute | New part on `Button` |
+| Approval prompt | Asks permission before a consequential change (removing part of the app): Deny / Allow, then the decision | archie.ds prompt-alert `51:6098` | Human in the Loop | `PromptAlert` (UCL) |
+| What's next | Archie's next steps after an update: rows with what each produces, the recommended one first | Replaces the CTAs and follow-up chips (Result `2186:15400`, Suggested Follow-up Actions `2129:14006`); not in Figma yet | Suggest / Confirm / Execute, Follow-up Chips | New part |
 | Files processed | Files written: live count, then "56 files processed · View in Code"; expands to the list with New/Modified, time and credits | Thought sheet "File 1", "Files", "Files Expanded"; File Process Expanded `1984:11642` | Tool Use, Cost Transparency | New part |
 | Code stream | "Writing: src/styles/theme.css" with the code streaming in | Writing Code `2198:16206`, code streaming `2231:48935` | Streaming, Chat Artifacts | New part |
 | Version card | The result of a build; current or restorable | Versions sheet `1988:12207`, Several Versions `2000:12295` | Checkpoints and Restore | New part |
 | Response actions | Copy, helpful / not helpful, retry under a reply; helpful / not helpful, save under a version | Resolved `3581:16933` | Feedback Loops | New part on `Button` |
 | Error card | What failed, what's unchanged, Retry | — (not in Figma) | Failure Disclosure | New part |
-| Suggested prompts | Starters in an empty chat; follow-ups after a reply, above the composer | Suggested Follow-up Actions `2129:14006` | Prompt Starters, Follow-up Chips | New part on `Button` |
+| Suggested prompts | Starters in an empty chat (follow-ups are now the "What's next" card) | Suggested Follow-up Actions `2129:14006` | Prompt Starters, Follow-up Chips | New part on `Button` |
 | Queue | Messages waiting while Archie works, each removable | Queue-01…04 `3527:3688`…, Queue - Inline `3549:4020` | Interrupt and Resume | New part |
 | Composer | Send, voice, Stop, add to queue, slash commands ("type / for options") | Prompt Composer (all frames) | Input Mode Toggle, Command Bar | `PromptComposer` (UCL) |
 | System note | Restore notes and day separators | Several Versions, Code 8 `1971:13879` | — | New part |
@@ -129,12 +130,12 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
    - **An answer to a clarifying question that doesn't read as words** ("sdkfj"): Archie keeps the answers it could read and asks that one question again, with its options: "Thanks. I couldn't read your answer to question 2, so I've kept the others." The blueprint waits until it has a clear answer.
 
    Archie checks whether a message reads as words before anything else, so gibberish that happens to contain a known word ("asdf red qwer") still gets a question, not a change. Choosing an option sends it as the person's message; typing a new message works too. Archie doesn't ask when the message is clear enough to act on safely: a small, easily undone change goes ahead and says what it assumed (§3 "It's unsure").
-5. **Nothing builds without a choice.** After the blueprint, Archie offers "Generate Prototype" and "Generate Full Stack Application". Choosing one sends it as the person's message; the others are disabled.
+5. **Nothing builds without a choice, and nothing risky without permission.** A change that removes part of the app, or can't be easily undone, waits on an approval prompt ("Ask permission": what it changes, Deny / Allow); the decision then shows in the prompt. After the blueprint, Archie offers "Generate Prototype" and "Generate Full Stack Application". Choosing one sends it as the person's message; the others are disabled.
 6. **Every build ends in a version.** A version card marks the current version; earlier ones can be restored. Restoring adds a system note ("Restoring to a previous version: 2 → 1") and a new current version, so nothing is lost.
 7. **Send while busy queues.** While Archie works, the composer's button is Stop. Typing turns it into "Add to queue" with a small Stop beside it. Queued messages show above the composer, can be removed, and go one by one when each turn ends.
 8. **Stop keeps what's done.** Stop ends the turn, keeps any text and finished files, marks unfinished steps as stopped, and says so. Queued messages then go.
 9. **Errors say what's safe.** An error names the failed step, says what's unchanged, and offers Retry only when retrying can't duplicate changes.
-10. **Follow-ups are optional.** After a build, up to three suggested prompts show above the composer. Choosing one sends it; typing anything hides them.
+10. **Every update says what's next.** When Archie finishes something (the blueprint, a build, a change, a fix), it says what happened, guides the next move in a sentence, and, when there are next steps, shows a "What's next" card: one row per step, each with what it produces, Archie's recommendation first (no badge: its place says it), an arrow to choose. Choosing a row sends it as the person's message; the card then locks with a check on the choice. "Or ask for something else below." keeps the composer open. One card for every "what's next" moment; it replaced the chips with a corner connector and the follow-up chips above the composer (decision 2026-10-29).
 11. **The canvas follows the chat.** Plan fills in as the blueprint is drafted, with skeletons for sections still to come, so the chat and the canvas tell the same story.
 12. **Commands are shortcuts, not a second language.** "/" opens the commands menu (`/prototype`, `/fullstack`, `/theme`, `/module`, `/contrast`, `/explain`). A sent command is handled like the request it stands for ("/theme blue" = "Change the color theme to blue"), with the same questions, approvals and versions. The composer interacts as intercept-ucl's does.
 13. **Answers can be changed.**
@@ -159,7 +160,7 @@ The sample responder plays these turns. Statuses follow the progress PRD's FR-03
 | 7 | "What's a database relationship?" | Level 1: Thinking…, then the answer streams |
 | 8 | "asdf qwer" | A playful reply that asks again, different each time ("I tried every gear and couldn't get that one moving. Tell me what you have in mind?"). No options |
 | 9 | "make it better" | "I can improve a few things. Which one do you mean?" with options: The visual design, Product pages, Checkout |
-| 10 | "remove the cart" | "Do you want to remove the cart icon from the header, or remove the cart and checkout entirely?" with both as options |
+| 10 | "remove the cart" | "Do you want to remove the cart icon from the header, or remove the cart and checkout entirely?" with both as options. Choosing to remove both brings an approval prompt ("Ask permission", Deny / Allow) |
 | 11 | A clarifying answer typed as "sdkfj" | After the last answer: "Thanks. I couldn't read your answer to question 2, so I've kept the others." and that question again with its options. A clear answer, then the blueprint |
 
 ℹ️ A clear message the script doesn't recognize gets the "What would you like to do?" question with options, not a canned "I can't do that", so the sample behaves like the real rule.

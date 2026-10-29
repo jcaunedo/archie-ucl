@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
+	ArrowRight,
 	Bookmark,
 	Check,
 	ChevronRight,
@@ -21,6 +22,12 @@ import { AnimatePresence, motion } from "motion/react";
 
 import { Button } from "@/components/buttons/button";
 import { ChatMessage } from "@/components/data-display/chat-message";
+import {
+	PromptAlert,
+	PromptAlertActions,
+	PromptAlertDescription,
+	PromptAlertTitle,
+} from "@/components/feedback/prompt-alert";
 import { ActivityIndicatorIcon } from "@/components/feedback/activity-indicator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/overlays/tooltip";
 import {
@@ -146,11 +153,6 @@ function Disclosure({
 			</AnimatePresence>
 		</div>
 	);
-}
-
-/** Figma's corner connector before a chip: the action hangs off the reply above it. */
-function Connector() {
-	return <span aria-hidden className='-mt-3 h-4 w-2.5 shrink-0 rounded-bl-md border-b border-l border-border' />;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -569,46 +571,127 @@ function ProgressLine({ block }: { block: Block<"progress"> }) {
 }
 
 /**
- * The actions Archie proposes (Figma CTAs). Choosing one sends it; then they all lock, the chosen one checked. They also
- * lock once the conversation has moved on (`locked`).
+ * "What's next" (Follow-up Chips, Suggest / Confirm / Execute): after Archie's update, the next steps as one card. The
+ * recommended step comes first; each row says what it produces, and choosing one sends it as the person's
+ * message. Once a step is chosen, or the conversation moves on, the card locks; the chosen row keeps a check. Not in
+ * Figma: decision 2026-10-29 (prds/chat-behavior-system.md rule 10).
  */
-function ActionChips({
+function NextSteps({
 	block,
 	locked: lockedProp = false,
 	onChoose,
 }: {
 	block: Block<"actions">;
 	locked?: boolean;
-	onChoose: (option: string) => void;
+	onChoose: (step: string) => void;
+}) {
+	const id = useId();
+	const locked = lockedProp || block.chosen !== undefined;
+	const steps = [...block.steps].sort((a, b) => Number(Boolean(b.recommended)) - Number(Boolean(a.recommended)));
+
+	return (
+		<div className='flex flex-col gap-1.5'>
+			<div
+				role='group'
+				aria-labelledby={`${id}-title`}
+				className='flex flex-col overflow-hidden rounded-lg border border-border bg-background'
+			>
+				<p id={`${id}-title`} className='border-b border-border px-3 py-1.5 text-xs font-medium text-muted-foreground'>
+					What's next
+				</p>
+				<div className='flex flex-col divide-y divide-border'>
+					{steps.map((step, index) => {
+						const chosen = block.chosen === step.label;
+						return (
+							<button
+								key={step.label}
+								type='button'
+								aria-label={step.label}
+								aria-describedby={step.description ? `${id}-${index}` : undefined}
+								aria-disabled={locked || undefined}
+								aria-pressed={chosen || undefined}
+								onClick={() => !locked && onChoose(step.label)}
+								className={cn(
+									"group flex items-center gap-3 px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+									!locked && "hover:bg-accent",
+									locked && !chosen && "opacity-60",
+								)}
+							>
+								<span className='flex min-w-0 flex-1 flex-col gap-0.5'>
+									<span className='text-sm font-medium text-foreground'>{step.label}</span>
+									{step.description && (
+										<span id={`${id}-${index}`} className='text-xs text-muted-foreground'>
+											{step.description}
+										</span>
+									)}
+								</span>
+								{chosen ? (
+									<Check aria-hidden className='size-4 shrink-0 text-icon-muted' />
+								) : (
+									<ArrowRight
+										aria-hidden
+										className={cn(
+											"size-4 shrink-0 text-icon-muted transition-transform",
+											!locked && "group-hover:translate-x-0.5 group-hover:text-icon",
+										)}
+									/>
+								)}
+							</button>
+						);
+					})}
+				</div>
+			</div>
+			{!locked && <p className='pl-1 text-xs text-muted-foreground'>Or ask for something else below.</p>}
+		</div>
+	);
+}
+
+/**
+ * Archie asking permission before a consequential action (UCL PromptAlert, archie.ds prompt-alert): Deny (`outline`)
+ * and Allow (`neutral`). Once decided, or once the conversation has moved on, the choice is shown instead of the buttons.
+ */
+function ApprovalPrompt({
+	block,
+	active,
+	onDecide,
+}: {
+	block: Block<"approval">;
+	/** False once the conversation has moved on without a decision: the buttons lock. */
+	active: boolean;
+	onDecide: (choice: "allow" | "deny", message: string) => void;
 }) {
 	return (
-		<div className='flex flex-col gap-2 pl-1'>
-			{block.options.map((option) => {
-				const chosen = block.chosen === option;
-				const locked = lockedProp || block.chosen !== undefined;
-				return (
-					<div key={option} className='flex items-center gap-1.5'>
-						<Connector />
-						{chosen ? (
-							// The choice stays readable: it's what the person asked for, not a disabled control.
-							<span className='flex h-7 items-center gap-1.5 rounded-button-sm border border-border bg-background px-2.5 text-sm text-foreground'>
-								<Check aria-hidden className='size-4' />
-								{option}
-							</span>
-						) : (
-							<Button
-								variant='outline'
-								size='sm'
-								aria-disabled={locked || undefined}
-								onClick={() => !locked && onChoose(option)}
-							>
-								{option}
-							</Button>
-						)}
-					</div>
-				);
-			})}
-		</div>
+		<PromptAlert>
+			<PromptAlertTitle>{block.title}</PromptAlertTitle>
+			<PromptAlertDescription>{block.description}</PromptAlertDescription>
+			<PromptAlertActions>
+				{block.decided ? (
+					<p className='flex items-center gap-1 text-xs text-muted-foreground'>
+						<Check aria-hidden className='size-3.5' />
+						{block.decided === "allow" ? "Allowed" : "Denied"}
+					</p>
+				) : (
+					<>
+						<Button
+							variant='outline'
+							size='sm'
+							aria-disabled={!active || undefined}
+							onClick={() => active && onDecide("deny", block.deny.message)}
+						>
+							{block.deny.label}
+						</Button>
+						<Button
+							variant='neutral'
+							size='sm'
+							aria-disabled={!active || undefined}
+							onClick={() => active && onDecide("allow", block.allow.message)}
+						>
+							{block.allow.label}
+						</Button>
+					</>
+				)}
+			</PromptAlertActions>
+		</PromptAlert>
 	);
 }
 
@@ -829,19 +912,6 @@ function QueueList({ items, onRemove }: { items: string[]; onRemove: (index: num
 	);
 }
 
-/** Follow-up prompts above the composer after a build (Follow-up Chips). */
-function SuggestionChips({ items, onPick }: { items: string[]; onPick: (item: string) => void }) {
-	return (
-		<div role='group' aria-label='Suggested next steps' className='flex gap-2 overflow-x-auto px-2 pb-2'>
-			{items.map((item) => (
-				<Button key={item} variant='outline' size='sm' className='shrink-0 bg-background' onClick={() => onPick(item)}>
-					{item}
-				</Button>
-			))}
-		</div>
-	);
-}
-
 /** An empty chat: what Archie does, and a few ways to start (Prompt Starters). */
 function PromptStarters({ items, onPick }: { items: string[]; onPick: (item: string) => void }) {
 	return (
@@ -864,21 +934,21 @@ function PromptStarters({ items, onPick }: { items: string[]; onPick: (item: str
 }
 
 export {
-	ActionChips,
 	ActivityFeed,
+	ApprovalPrompt,
 	ElapsedTime,
 	AnswersMessage,
 	ArchieText,
 	DaySeparator,
 	ErrorCard,
 	FilesProcessed,
+	NextSteps,
 	Note,
 	ProgressLine,
 	PromptStarters,
 	QuestionsCard,
 	QueueList,
 	ResponseActions,
-	SuggestionChips,
 	ThoughtDisclosure,
 	VersionCard,
 };

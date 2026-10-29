@@ -14,7 +14,7 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: "select",
-			options: ["default", "secondary", "outline", "ghost", "link", "destructive", "destructive-secondary"],
+			options: ["default", "neutral", "secondary", "outline", "ghost", "link", "destructive", "destructive-secondary"],
 		},
 		size: {
 			control: "select",
@@ -34,6 +34,7 @@ export const Default: Story = {
 
 const variants = [
 	{ variant: "default", label: "Generate", figma: "Solid · Brand" },
+	{ variant: "neutral", label: "Allow", figma: "Solid · Neutral (override)" },
 	{ variant: "secondary", label: "Preview", figma: "Flat · Brand" },
 	{ variant: "outline", label: "Share", figma: "Outlined · Neutral" },
 	{ variant: "ghost", label: "Cancel", figma: "Ghost · Neutral" },

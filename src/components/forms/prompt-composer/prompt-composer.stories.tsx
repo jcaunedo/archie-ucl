@@ -32,7 +32,7 @@ function Composer(props: ComponentProps<typeof PromptComposer>) {
 		<PromptComposer {...props}>
 			<PromptComposerTextarea placeholder='Message Archie or type / for options' aria-label='Message Archie' />
 			<PromptComposerFooter>
-				<div className='flex items-center gap-1'>
+				<div className='flex items-center gap-[5px]'>
 					<PromptComposerButton aria-label='Attach files'>
 						<Plus />
 					</PromptComposerButton>
