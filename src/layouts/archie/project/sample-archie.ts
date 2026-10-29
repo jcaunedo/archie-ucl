@@ -329,10 +329,94 @@ function recolor(text: string): Step[] {
 	});
 }
 
+/** The blueprint sections a "how do I refine…" question can be about. */
+const sections = {
+	"user types": {
+		title: "User Types",
+		where: `User Types lists ${list(blueprint.userTypes)}`,
+		detail: "Select one to open its details: name, description, software proficiency and the devices it uses",
+		example: "Add a Wholesale Buyer who orders in bulk",
+	},
+	modules: {
+		title: "Modules",
+		where: `Modules lists ${list(blueprint.modules)}`,
+		detail:
+			"Select one to open its details: name, icon, description, capabilities and \"Who is this module for?\", the user types it's built for",
+		example: "Split Orders & Returns into two modules",
+	},
+	"core services": {
+		title: "Core Services",
+		where: `Core Services lists ${list(blueprint.coreServices)}`,
+		detail: "Select one to open its settings, like the sign-in methods and roles in User Management",
+		example: "Turn on Google and Apple sign-in",
+	},
+	integrations: {
+		title: "Integrations",
+		where: `Integrations lists ${list(blueprint.integrations)}`,
+		detail: "Select one to see what it's used for and which modules and services depend on it",
+		example: "Use Mailchimp for marketing emails",
+	},
+} as const;
+
+type Section = keyof typeof sections;
+
+/** Which part of the blueprint a question is about, if it names one. */
+function sectionIn(text: string): Section | undefined {
+	if (/user ?types?|roles?|personas?/i.test(text)) return "user types";
+	if (/modules?/i.test(text)) return "modules";
+	if (/(core )?services?/i.test(text)) return "core services";
+	if (/integrations?/i.test(text)) return "integrations";
+	return undefined;
+}
+
+/**
+ * How to refine the blueprint: where the part lives in Plan, how to edit it there or here in the chat, and the order to
+ * review it in before generating the app. A detailed answer (Level 1), ending with what's next.
+ */
+function refineGuide(text: string): Step[] {
+	const section = sectionIn(text);
+	const how = section
+		? `**Your ${section} live in Plan**, in the ${sections[section].title} section. Here's how to update them:
+
+1. **Open Plan** from the top bar. ${sections[section].where}.
+2. **${sections[section].detail}.** Edit any field there; the AI rationale explains why I suggested it.
+3. **Add or remove:** use + at the end of the section to add one, or × on an item to remove it.
+4. **Regenerate** with the sparkle icon to have me redraft one item, or the whole section.
+5. **Or ask me here,** for example "${sections[section].example}". I'll update the blueprint and tell you what changed.`
+		: `**Your blueprint is your spec**, and you can refine it two ways:
+
+1. **In Plan:** select any user type, module, service or integration to open its details and edit them. Use + to add, × to remove, and the sparkle icon to have me redraft an item or a whole section.
+2. **Here in the chat:** describe the change, for example "Customers can only buy after signing up" or "Add a Wholesale Buyer user type". I'll update the blueprint, show you what changed, and keep Plan in step.`;
+
+	return [
+		wait(0, { type: "status", label: "Thinking…" }),
+		wait(1000, { type: "text", text: "" }),
+		...say(`${how}
+
+**Before you generate the app**, I'd review the blueprint in this order:
+
+1. **Description:** it should say what the store is for and who it serves.
+2. **User types:** who uses the app, and what each one can do.
+3. **Modules:** check each one's audience, so every user type has the screens it needs.
+4. **Core services:** sign-in methods, payments and notifications.
+5. **Integrations:** confirm ${list(blueprint.integrations)}.
+
+Changes are quick now and take longer once there's code. When it looks right, start with a prototype: it's the fastest way to check the flows.`),
+		next([nextSteps.prototype, nextSteps.fullStack]),
+		wait(0, { type: "done" }),
+	];
+}
+
 /** The scripted turns. The first match wins, so the order matters. */
 const sampleTurns: { match: RegExp; steps: (text: string) => Step[] }[] = [
 	{ match: new RegExp(`^${answersIntro}`), steps: () => draftBlueprint },
 	{ match: /\b(create|build|make)\b.*\b(app|store|shop)\b/i, steps: () => clarify },
+	{
+		// "How do I update my user types?", "how can I refine my specs", "where do I edit the modules?"
+		match:
+			/\b(how|where|what's the best way|can i)\b.*\b(update|edit|change|refine|improve|add|remove|rename|review)\b.*\b(user ?types?|roles?|personas?|modules?|services?|integrations?|specs?|blueprint|plan|requirements?)\b|\brefine\b.*\b(specs?|blueprint|plan|requirements?)\b/i,
+		steps: (text) => refineGuide(text),
+	},
 	{ match: /^generate prototype$/i, steps: () => build(false) },
 	{ match: /^generate full stack application$/i, steps: () => build(true) },
 	{
