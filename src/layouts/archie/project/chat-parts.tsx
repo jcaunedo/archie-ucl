@@ -446,9 +446,9 @@ function ThoughtDisclosure({ block }: { block: Block<"thought"> }) {
 			icon={<Loader state='brand' className='size-4' />}
 			label={`Thought for ${formatDuration(block.seconds)}`}
 		>
-			{/* Figma 61:706: the steps on a timeline under the A, 4px apart, drawn as Loader's `steps` state at 16px: a hollow
-			    node (`background`, `foreground-subtle` ring) in the A's 16px column, 6px before each step, and one
-			    `border-defined` line through the nodes, from the first step's top to the last step's node. Built here, not
+			{/* Figma 61:706: the steps on a timeline under the A, 4px apart, drawn as Loader's `steps` state at 16px: a filled
+			    `foreground-subtle` node with a `background` halo, in the A's 16px column, 6px before each step, and one
+			    `border` line through the nodes, from the first step's top to the last step's node. Built here, not
 			    from Loader instances: its line can't stop at the last node or bridge the rows' gaps (Figma's frame adds
 			    connector and last-node pieces too). */}
 			<ol className='flex flex-col gap-1 text-sm text-muted-foreground'>
@@ -457,12 +457,12 @@ function ThoughtDisclosure({ block }: { block: Block<"thought"> }) {
 						<span
 							aria-hidden
 							className={cn(
-								"absolute top-0 left-2 w-[1.1429px] -translate-x-1/2 bg-border-defined",
+								"absolute top-0 left-2 w-[1.1429px] -translate-x-1/2 bg-border",
 								index === block.steps.length - 1 ? "h-2.5" : "-bottom-1",
 							)}
 						/>
 						<span aria-hidden className='relative flex h-5 w-4 shrink-0 items-center justify-center'>
-							<span className='size-[7.4286px] rounded-full border-[1.1429px] border-foreground-subtle bg-background' />
+							<span className='size-[7.4286px] rounded-full border-[1.1429px] border-background bg-foreground-subtle' />
 						</span>
 						<span className='min-w-0'>{step}</span>
 					</li>

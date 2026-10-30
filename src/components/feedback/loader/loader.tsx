@@ -22,7 +22,7 @@ const loaderVariants = cva("relative inline-flex size-7 shrink-0 items-center ju
 		state: {
 			// Figma "loading": the activity ball, half the frame (14px of 28), in brand.
 			loading: "text-brand",
-			// Figma "steps": a step on a timeline, a hollow node on a line that runs past the frame, in foreground-subtle.
+			// Figma "steps": a step on a timeline, a filled node on a line that runs past the frame, in foreground-subtle.
 			steps: "text-foreground-subtle",
 			// Figma "brand": the Archie A, 23.42 × 27 of 28, at the frame's top (Figma update 2026-10-29: it lines up with
 			// the text beside it), in brand. Shown once Archie's status is "thought" (it has finished thinking).
@@ -51,15 +51,16 @@ function ArchieSymbol() {
 }
 
 /**
- * Figma archie.ds "loader" → "Property 1=steps": the node (hollow, `foreground-subtle` ring on `background`), 11px across
- * with a 2px stroke, on a 2px `border-defined` line, all in 28 (scaled with the frame). The line runs past the frame, 5px above and 4px below, so steps stacked with a 4px gap join up.
+ * Figma archie.ds "loader" → "Property 1=steps": the node (filled `foreground-subtle`, with a 2px `background` halo that
+ * cuts the line, 11px across with the halo), on a 2px `border` line, all in 28 (scaled with the frame). Figma update
+ * 2026-10-30: it was a hollow ring on `border-defined`. The line runs past the frame, 5px above and 4px below, so steps stacked with a 4px gap join up.
  */
 function StepsNode() {
 	return (
 		<svg viewBox='0 0 28 37' fill='none' className='absolute top-[-17.86%] left-0 h-[132.14%] w-full'>
-			{/* Figma `border/defined`. */}
-			<path d='M13.5 0V37' strokeWidth={2} className='stroke-border-defined' />
-			<circle cx='13.5' cy='18.5' r='5.5' stroke='currentColor' strokeWidth={2} className='fill-background' />
+			{/* Figma `border/border`. */}
+			<path d='M13.5 0V37' strokeWidth={2} className='stroke-border' />
+			<circle cx='13.5' cy='18.5' r='5.5' fill='currentColor' strokeWidth={2} className='stroke-background' />
 		</svg>
 	);
 }

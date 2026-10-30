@@ -42,7 +42,7 @@ export const Brand: Story = {
 };
 
 /**
- * Figma "steps": a step on a timeline, a hollow node on a line that runs past the frame. Stacked 4px apart, the lines
+ * Figma "steps": a step on a timeline, a filled node on a line that runs past the frame. Stacked 4px apart, the lines
  * join. Test: the line runs past the frame, 5 and 4 of 28 above and below.
  */
 export const Steps: Story = {
