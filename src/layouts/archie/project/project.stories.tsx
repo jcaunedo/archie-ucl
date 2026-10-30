@@ -407,7 +407,7 @@ export const MessageToTop: Story = {
 };
 
 /**
- * The person's message has Copy and Retry below it, shown on hover or keyboard focus.
+ * The person's message has its time, Copy and Retry below it, shown on hover or keyboard focus.
  * Test: the actions sit below the bubble, hidden until focused; Retry sends the same message again, and Archie answers
  * it again.
  */
@@ -423,15 +423,17 @@ export const RetryMessage: Story = {
 		const row = canvas.getAllByText(question).at(-1)!.closest<HTMLElement>("[data-thread-item]")!;
 		const retry = within(row).getByRole("button", { name: "Retry" });
 		const actions = retry.parentElement!;
-		// 2px below the bubble, hidden until hover or keyboard focus (the test's hover is synthetic, so it checks focus).
+		// 4px below the bubble, hidden until hover or keyboard focus (the test's hover is synthetic, so it checks focus).
 		const bubble = row.firstElementChild!.getBoundingClientRect();
-		// The row touches the bubble (one hover area); its buttons start 2px down.
+		// The row touches the bubble (one hover area); its buttons start 4px down.
 		await expect(actions.getBoundingClientRect().top - bubble.bottom).toBeCloseTo(0, 0);
-		await expect(retry.getBoundingClientRect().top - bubble.bottom).toBeCloseTo(2, 0);
+		await expect(retry.getBoundingClientRect().top - bubble.bottom).toBeCloseTo(4, 0);
 		await expect(getComputedStyle(actions).opacity).toBe("0");
 		retry.focus();
 		await waitFor(() => expect(getComputedStyle(actions).opacity).toBe("1"));
 		await expect(within(row).getByRole("button", { name: "Copy" })).toBeInTheDocument();
+		// Sent today: the time only, before the buttons.
+		await expect(row.querySelector("time")!.textContent).toMatch(/^\d{1,2}:\d{2}\s(AM|PM)$/);
 
 		await userEvent.click(within(row).getByRole("button", { name: "Retry" }));
 		await archieFinished(canvas);

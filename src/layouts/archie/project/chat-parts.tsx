@@ -66,20 +66,23 @@ type Block<K extends ArchieBlock["kind"]> = Extract<ArchieBlock, { kind: K }>;
 /* -------------------------------------------------------------------------- */
 
 /**
- * A 24px icon button with a tooltip that names it. The tooltip ignores the pointer, so it never covers what the pointer
- * is heading for (a hover-revealed row would lose its hover to it). `side`: where it opens, above by default.
+ * A 24px icon button with a tooltip that names it (`compact`: 20px, the same 12px icon). The tooltip ignores the
+ * pointer, so it never covers what the pointer is heading for (a hover-revealed row would lose its hover to it).
+ * `side`: where it opens, above by default.
  */
 function IconAction({
 	label,
 	onClick,
 	pressed,
 	side,
+	compact = false,
 	children,
 }: {
 	label: string;
 	onClick?: () => void;
 	pressed?: boolean;
 	side?: "top" | "bottom";
+	compact?: boolean;
 	children: ReactNode;
 }) {
 	return (
@@ -94,7 +97,10 @@ function IconAction({
 					// The icon is `foreground-subtle`, `foreground` on hover (with Button ghost's hover fill) and while pressed.
 					// Ghost colors its icon itself (`[&_svg]:text-icon`), so these target the icon. Its line stays lucide's
 					// default (stroke 2, 1px at 12px): fractional widths blur at this size (decision 2026-10-29).
-					className='[&_svg]:text-foreground-subtle hover:[&_svg]:text-foreground aria-pressed:[&_svg]:text-foreground'
+					className={cn(
+						"[&_svg]:text-foreground-subtle hover:[&_svg]:text-foreground aria-pressed:[&_svg]:text-foreground",
+						compact && "size-5",
+					)}
 				>
 					{children}
 				</Button>
@@ -115,7 +121,7 @@ const MotionThumbsDown = motion.create(ThumbsDown);
  * the buttons after it glide over (`layout`; wrap them in `ShiftsWithFeedback`); the pick fills and swells to
  * `motionScale.pickIcon` and settles (Confirm). Under reduced motion, it all happens at once.
  */
-function FeedbackButtons() {
+function FeedbackButtons({ compact = false }: { compact?: boolean }) {
 	const [rating, setRating] = useState<"up" | "down" | null>(null);
 	const toggle = (next: "up" | "down") => setRating((current) => (current === next ? null : next));
 	const { prefersReducedMotion, resolve } = useMotionPreference();
@@ -143,11 +149,11 @@ function FeedbackButtons() {
 						transition={{ layout: layoutSpring }}
 					>
 						{choice === "up" ? (
-							<IconAction label='Good response' pressed={rating === "up"} onClick={() => toggle("up")}>
+							<IconAction label='Good response' pressed={rating === "up"} onClick={() => toggle("up")} compact={compact}>
 								<MotionThumbsUp {...thumb(rating === "up")} />
 							</IconAction>
 						) : (
-							<IconAction label='Bad response' pressed={rating === "down"} onClick={() => toggle("down")}>
+							<IconAction label='Bad response' pressed={rating === "down"} onClick={() => toggle("down")} compact={compact}>
 								<MotionThumbsDown {...thumb(rating === "down")} />
 							</IconAction>
 						)}
@@ -1042,23 +1048,44 @@ function useCopy(text: string) {
 	return { copied, copy };
 }
 
+const timeFormat = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
+const dayFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+const dayYearFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+/** When a message was sent: "3:42 PM" today, "Oct 27, 3:42 PM" another day, with the year when it isn't this one. */
+function formatSentAt(at: number, now = Date.now()) {
+	const sent = new Date(at);
+	const today = new Date(now);
+	const time = timeFormat.format(sent);
+	if (sent.toDateString() === today.toDateString()) {
+		return time;
+	}
+	const day = (sent.getFullYear() === today.getFullYear() ? dayFormat : dayYearFormat).format(sent);
+	return `${day}, ${time}`;
+}
+
 /**
- * Copy and Retry for the person's message, below its bubble on the right, in the thread's gap. They show while the
- * message is hovered (`group/message` on its row) or when one of them has keyboard focus. Retry sends the message again.
+ * When the person's message was sent, then Copy and Retry, below its bubble on the right, in the thread's gap. They
+ * show while the message is hovered (`group/message` on its row) or when one of them has keyboard focus. Retry sends the message again.
  */
-function MessageActions({ text, onRetry }: { text: string; onRetry: () => void }) {
+function MessageActions({ text, sentAt, onRetry }: { text: string; sentAt: number; onRetry: () => void }) {
 	const { copied, copy } = useCopy(text);
 
 	return (
-		// Below the bubble, its buttons 2px down, over the thread's 24px gap, so it takes no space. Hidden, it lets clicks
-		// through. The 2px is padding, not margin: the row touches the bubble, so moving the pointer from the bubble to a
+		// Below the bubble, its buttons 4px down, over the thread's 24px gap, so it takes no space. Hidden, it lets clicks
+		// through. The 4px is padding, not margin: the row touches the bubble, so moving the pointer from the bubble to a
 		// button never leaves the hover area and the actions stay.
-		<div className='pointer-events-none absolute top-full right-0 flex pt-0.5 items-center opacity-0 transition-opacity group-hover/message:pointer-events-auto group-hover/message:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100'>
-			{/* Tooltips below: above, they'd cover the bubble the pointer comes from. */}
-			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy} side='bottom'>
+		<div className='pointer-events-none absolute top-full right-0 flex pt-1 items-center opacity-0 transition-opacity group-hover/message:pointer-events-auto group-hover/message:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100'>
+			{/* When it was sent, before the buttons: the time today, the date and time before. */}
+			<time dateTime={new Date(sentAt).toISOString()} className='mr-1 text-xs text-foreground-subtle'>
+				{formatSentAt(sentAt)}
+			</time>
+			{/* Tooltips below: above, they'd cover the bubble the pointer comes from. 20px buttons: 4px down, they end where
+			    the next item starts (24px), so they never overlap it (decision 2026-10-29). */}
+			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy} side='bottom' compact>
 				{copied ? <CopiedCheck /> : <Copy />}
 			</IconAction>
-			<IconAction label='Retry' onClick={onRetry} side='bottom'>
+			<IconAction label='Retry' onClick={onRetry} side='bottom' compact>
 				<RotateCw />
 			</IconAction>
 		</div>
@@ -1069,15 +1096,16 @@ function ResponseActions({ text, onRetry }: { text: string; onRetry?: () => void
 	const { copied, copy } = useCopy(text);
 
 	return (
-		// Below the reply, 2px down, over the thread's 24px gap, so it takes no space; the turn is `relative`.
-		<div className='absolute top-full left-0 mt-0.5 flex items-center'>
-			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy}>
+		// In the gap below the reply, so it takes no space: 20px buttons 4px down, then 8px (the turn's `mb-2`) before the
+		// next message (decision 2026-10-29). The turn is `relative`.
+		<div className='absolute top-full left-0 flex pt-1'>
+			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy} compact>
 				{copied ? <CopiedCheck /> : <Copy />}
 			</IconAction>
-			<FeedbackButtons />
+			<FeedbackButtons compact />
 			{onRetry && (
 				<ShiftsWithFeedback>
-					<IconAction label='Retry' onClick={onRetry}>
+					<IconAction label='Retry' onClick={onRetry} compact>
 						<RotateCw />
 					</IconAction>
 				</ShiftsWithFeedback>

@@ -104,10 +104,11 @@ type ArchieTurn = {
 type SentAnswers = { questions: ClarifyingQuestion[]; values: string[] };
 
 /**
- * A message the person sent. `sent` is what went to Archie when the bubble shows something else (a prototype shortcut
- * shows "Show ask permission interaction" but sends "/ask-permission"), so Retry sends the same thing again.
+ * A message the person sent, and when (`sentAt`, ms). `sent` is what went to Archie when the bubble shows something else
+ * (a prototype shortcut shows "Show ask permission interaction" but sends "/ask-permission"), so Retry sends the same
+ * thing again.
  */
-type PersonMessage = { kind: "person"; id: string; text: string; answers?: SentAnswers; sent?: string };
+type PersonMessage = { kind: "person"; id: string; text: string; sentAt: number; answers?: SentAnswers; sent?: string };
 
 /** A day separator ("2 days ago") between parts of a long thread. */
 type Separator = { kind: "separator"; id: string; label: string };
@@ -503,10 +504,15 @@ function currentVersion(thread: ThreadItem[]) {
 	return 0;
 }
 
-const person = (text: string, answers?: SentAnswers, sent?: string): PersonMessage => ({
+/** A message from the person, sent now unless `at` says when. */
+const person = (
+	text: string,
+	{ answers, sent, at = Date.now() }: { answers?: SentAnswers; sent?: string; at?: number } = {},
+): PersonMessage => ({
 	kind: "person",
 	id: newId("person"),
 	text,
+	sentAt: at,
 	answers,
 	sent,
 });

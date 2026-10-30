@@ -25,7 +25,7 @@ function conversation() {
 
 	const history = {
 		person(text: string) {
-			thread = [...thread, person(text)];
+			thread = [...thread, person(text, { at: clock })];
 			return history;
 		},
 		archie(request: ArchieRequest) {
@@ -58,7 +58,7 @@ function conversation() {
 			const questions = blueprint.clarifyingQuestions.map(({ question, options }) => ({ question, options }));
 			const values = blueprint.clarifyingQuestions.map(({ answer }) => answer);
 			const text = [answersIntro, ...values.map((value) => `- ${value}`)].join("\n");
-			thread = [...thread, person(text, { questions, values })];
+			thread = [...thread, person(text, { answers: { questions, values }, at: clock })];
 			return history.archie({ kind: "message", text });
 		},
 		/** Chooses one of the actions Archie proposed in its last turn. */

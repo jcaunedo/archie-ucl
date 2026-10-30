@@ -29,6 +29,7 @@ import { Topbar, TopbarCenter, TopbarEnd, TopbarStart } from "@/components/navig
 import { TooltipProvider } from "@/components/overlays/tooltip";
 import { Typography } from "@/components/typography";
 import { fadeVariants, revealVariants, scrollIntoViewSmoothly, slideUpVariants, useMotionPreference } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 import {
 	answerQuestion,
@@ -239,7 +240,9 @@ function ArchieTurnView({
 	}
 
 	return (
-		<div data-slot='archie-turn' className='relative flex flex-col gap-4'>
+		// A reply with its action row keeps 8px after the row (it sits in the thread's gap): 32px from the text to the next
+		// message, the buttons 8px above it (decision 2026-10-29).
+		<div data-slot='archie-turn' className={cn("relative flex flex-col gap-4", plainAnswer && "mb-2")}>
 			{/* Blocks already there when the turn first shows (a thread opened later) skip every entrance inside them, the
 			    Loader's grow included; blocks that arrive afterwards play theirs. */}
 			<AnimatePresence initial={false}>
@@ -363,7 +366,7 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 		}
 		// A prototype shortcut shows as what it does ("Show ask permission interaction"); Archie still gets the command.
 		const shortcut = shortcutBubbles[text.trim()];
-		setThread((current) => [...current, shortcut ? person(shortcut, undefined, text) : person(text)]);
+		setThread((current) => [...current, shortcut ? person(shortcut, { sent: text }) : person(text)]);
 		request({ kind: "message", text });
 	}
 
@@ -386,7 +389,7 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 	/** Sends a set of answers as one message, kept with its questions so it can be expanded and edited. */
 	function sendAnswers(intro: string, questions: ClarifyingQuestion[], answers: string[]) {
 		const message = answersText(intro, answers);
-		setThread((current) => [...current, person(message, { questions, values: answers })]);
+		setThread((current) => [...current, person(message, { answers: { questions, values: answers } })]);
 		request({ kind: "message", text: message });
 	}
 
@@ -622,12 +625,13 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 							{thread.length === 0 && <PromptStarters items={starters} onPick={send} />}
 							{thread.map((item, index) => {
 								if (item.kind === "person") {
-									// The bubble, with Copy and Retry in the gap below it on the right, shown on hover or keyboard focus.
+									// The bubble, with its time, Copy and Retry in the gap below it on the right, shown on hover or keyboard focus.
+									// 4px more below it (`mb-1`), so they end 4px above what follows (decision 2026-10-29).
 									return (
 										<div
 											key={item.id}
 											data-thread-item={item.id}
-											className='group/message relative flex flex-col items-end'
+											className='group/message relative mb-1 flex flex-col items-end'
 										>
 											{item.answers ? (
 												<AnswersMessage
@@ -638,7 +642,7 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 											) : (
 												<ChatMessage>{item.text}</ChatMessage>
 											)}
-											<MessageActions text={item.text} onRetry={() => resend(item)} />
+											<MessageActions text={item.text} sentAt={item.sentAt} onRetry={() => resend(item)} />
 										</div>
 									);
 								}
