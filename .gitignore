@@ -5,9 +5,9 @@ storybook-static/
 .env
 .env.*.local
 .DS_Store
-# Local Claude Code skills & commands (not shared)
-.claude/skills/
-.claude/commands/
+# Local Claude Code and Impeccable files (not shared)
+.claude/
+.impeccable/
 
 # Vitest coverage reports
 coverage/
