@@ -9,5 +9,9 @@ storybook-static/
 .claude/
 .impeccable/
 
+# Local design audits and explorations (not shared)
+audit/
+explorations/
+
 # Vitest coverage reports
 coverage/
