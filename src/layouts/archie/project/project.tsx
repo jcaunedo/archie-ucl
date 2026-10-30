@@ -239,7 +239,7 @@ function ArchieTurnView({
 	}
 
 	return (
-		<div data-slot='archie-turn' className='flex flex-col gap-4'>
+		<div data-slot='archie-turn' className='relative flex flex-col gap-4'>
 			{/* Blocks already there when the turn first shows (a thread opened later) skip every entrance inside them, the
 			    Loader's grow included; blocks that arrive afterwards play theirs. */}
 			<AnimatePresence initial={false}>
@@ -605,11 +605,13 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 							<ChatActions />
 						</ChatPanelHeader>
 						{/* Busy while Archie answers, so assistive tech and tests know the thread is still changing. */}
-						{/* 16px of scroll padding: a message scrolled to the top keeps the thread's padding above it. */}
+						{/* 24px between items (decision 2026-10-29: the same above and below a message, room for the action rows
+						    under messages and replies). 16px of scroll padding: a message scrolled to the top keeps the thread's
+						    padding above it. */}
 						<ChatPanelBody
 							ref={body}
 							aria-busy={answering || undefined}
-							className='scroll-pt-4'
+							className='scroll-pt-4 gap-6'
 							onScroll={() => {
 								// A glide's own scrolling isn't the person scrolling.
 								if (!glide.current) {
@@ -620,13 +622,12 @@ function Project({ data, defaultPhase = "plan", defaultChatOpen = true, respond 
 							{thread.length === 0 && <PromptStarters items={starters} onPick={send} />}
 							{thread.map((item, index) => {
 								if (item.kind === "person") {
-									// The bubble, with Copy and Retry 4px below it on the right, shown on hover or keyboard focus. Their
-									// row keeps its place while hidden, so nothing moves when they show.
+									// The bubble, with Copy and Retry in the gap below it on the right, shown on hover or keyboard focus.
 									return (
 										<div
 											key={item.id}
 											data-thread-item={item.id}
-											className='group/message flex flex-col items-end gap-1'
+											className='group/message relative flex flex-col items-end'
 										>
 											{item.answers ? (
 												<AnswersMessage

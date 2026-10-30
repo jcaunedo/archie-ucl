@@ -35,7 +35,7 @@ There's no separate shell file yet: `project/project.tsx` is the whole app frame
 | Part | File | What it does |
 | --- | --- | --- |
 | Topbar | `project/project.tsx` | `Topbar` with the logo and project switcher on the left, MainNav (`SegmentedControl`) in the middle, actions (with the live credit balance) and the account on the right |
-| Chat | `project/project.tsx` | `ChatPanel`, 440px wide: the thread (person messages, Archie's turns, day separators, the queue), and `PromptComposer` |
+| Chat | `project/project.tsx` | `ChatPanel`, 440px wide: the thread (person messages, Archie's turns, day separators, the queue), and `PromptComposer`. The thread spaces items 24px apart (`gap-6`, over ChatPanelBody's 16px; decision 2026-10-29): the same above and below a message, and the action rows (`MessageActions` under a message, `ResponseActions` under a reply) sit in that gap, 2px below what they belong to, without taking space |
 | Canvas | `project/project.tsx`, `project/plan-canvas.tsx` | A `main` with a 48px header titled by the selected phase. Plan shows the blueprint (`PlanCanvas`); the other phases are still empty |
 
 State, all in `Project`:
@@ -92,5 +92,5 @@ Each one replaces a component UCL doesn't have yet. When it lands in UCL, swap i
 | `TopbarActions`'s credits pie (`images/credits.svg`, always the same slice) | `project/parts.tsx` | A credits meter that draws the real balance (DESIGN.md "Topbar") |
 | `TopbarActions`, `ChatActions` | `project/parts.tsx` | Nothing: they're UCL Buttons holding the page's copy |
 | `ChatResizeHandle` | `project/parts.tsx` | A Resizable component (shadcn Resizable) in UCL, and the handle in Figma |
-| `ArchieText`, `ActivityFeed`, `MessageActions` (Copy and Retry under the person's message, on hover or focus), `ApprovalPrompt` (wraps UCL `PromptAlert`), `ThoughtDisclosure`, `QuestionsCard`, `AnswersMessage`, `ProgressLine`, `NextSteps`, `FilesProcessed` (with the code stream), `VersionCard`, `ResponseActions`, `ErrorCard`, `Note`, `DaySeparator`, `QueueList`, `PromptStarters` | `project/chat-parts.tsx` | Their components in `archie.ds` (spec §4, §8). They come from Figma Archie-App, which isn't a design-system file |
+| `ArchieText`, `ActivityFeed`, `MessageActions` (Copy and Retry under the person's message, on hover or focus; their tooltips open below and ignore the pointer, so the hover holds), `FeedbackButtons` (Good / Bad response: a pick hides the other and fills, motion from `iconSwapVariants`, `layout` and `motionScale.pickIcon`), `ApprovalPrompt` (wraps UCL `PromptAlert`), `ThoughtDisclosure`, `QuestionsCard`, `AnswersMessage`, `ProgressLine`, `NextSteps`, `FilesProcessed` (with the code stream), `VersionCard`, `ResponseActions`, `ErrorCard`, `Note`, `DaySeparator`, `QueueList`, `PromptStarters` | `project/chat-parts.tsx` | Their components in `archie.ds` (spec §4, §8). They come from Figma Archie-App, which isn't a design-system file |
 | `PlanCanvas` | `project/plan-canvas.tsx` | Plan's components in `archie.ds` (chips, section header, description card) |

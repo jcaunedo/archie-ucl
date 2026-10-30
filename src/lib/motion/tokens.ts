@@ -60,6 +60,11 @@ const motionScale = {
 	iconIn: 0.6,
 	/** A small element (e.g. an icon) growing in as it replaces another in place (Swap pattern). */
 	swapIn: 0.8,
+	/**
+	 * A small icon confirming a choice (a picked thumb in a reply's actions): it swells to this and settles as it fills.
+	 * Confirm's scale, sized for a 16px icon, where `confirmPattern`'s 1.04 doesn't show.
+	 */
+	pickIcon: 1.2,
 	/** An item picked up by a drag (Lift while dragging), e.g. a photo tile being reordered. */
 	drag: 1.03,
 	/** Peak of a small trigger icon's Pending pulse (e.g. an AI mark while it generates). */

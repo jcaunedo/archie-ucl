@@ -13,7 +13,7 @@ import {
 	Hand,
 	Minus,
 	Pencil,
-	RotateCcw,
+	RotateCw,
 	ThumbsDown,
 	ThumbsUp,
 	Undo2,
@@ -38,12 +38,16 @@ import {
 	fadeVariants,
 	feedItemVariants,
 	iconSwapReducedVariants,
+	iconSwapVariants,
 	layoutSpring,
+	motionDuration,
+	motionScale,
 	reducedMotionTransition,
 	revealVariants,
 	scrollIntoViewSmoothly,
 	slideUpVariants,
 	staggerContainerVariants,
+	standardTransition,
 	useExpandClip,
 	useMotionPreference,
 } from "@/lib/motion";
@@ -61,16 +65,21 @@ type Block<K extends ArchieBlock["kind"]> = Extract<ArchieBlock, { kind: K }>;
 /* Shared                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/** A 24px icon button with a tooltip that names it. */
+/**
+ * A 24px icon button with a tooltip that names it. The tooltip ignores the pointer, so it never covers what the pointer
+ * is heading for (a hover-revealed row would lose its hover to it). `side`: where it opens, above by default.
+ */
 function IconAction({
 	label,
 	onClick,
 	pressed,
+	side,
 	children,
 }: {
 	label: string;
 	onClick?: () => void;
 	pressed?: boolean;
+	side?: "top" | "bottom";
 	children: ReactNode;
 }) {
 	return (
@@ -82,21 +91,80 @@ function IconAction({
 					aria-label={label}
 					aria-pressed={pressed}
 					onClick={onClick}
-					className='text-muted-foreground hover:text-foreground aria-pressed:text-foreground'
+					// The icon is `foreground-subtle`, `foreground` on hover (with Button ghost's hover fill) and while pressed.
+					// Ghost colors its icon itself (`[&_svg]:text-icon`), so these target the icon. Its line stays lucide's
+					// default (stroke 2, 1px at 12px): fractional widths blur at this size (decision 2026-10-29).
+					className='[&_svg]:text-foreground-subtle hover:[&_svg]:text-foreground aria-pressed:[&_svg]:text-foreground'
 				>
 					{children}
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent size='sm'>{label}</TooltipContent>
+			<TooltipContent size='sm' side={side} className='pointer-events-none'>
+				{label}
+			</TooltipContent>
 		</Tooltip>
 	);
 }
 
-/** Helpful / not helpful, one at a time (Feedback Loops). */
-function useFeedback() {
+const MotionThumbsUp = motion.create(ThumbsUp);
+const MotionThumbsDown = motion.create(ThumbsDown);
+
+/**
+ * Good / bad response (Feedback Loops). Picking one hides the other and fills its thumb (solid); picking it again
+ * clears the rating, and both come back as outlines. Motion: the other one shrinks and fades out (Swap's exit) while
+ * the buttons after it glide over (`layout`; wrap them in `ShiftsWithFeedback`); the pick fills and swells to
+ * `motionScale.pickIcon` and settles (Confirm). Under reduced motion, it all happens at once.
+ */
+function FeedbackButtons() {
 	const [rating, setRating] = useState<"up" | "down" | null>(null);
 	const toggle = (next: "up" | "down") => setRating((current) => (current === next ? null : next));
-	return { rating, toggle };
+	const { prefersReducedMotion, resolve } = useMotionPreference();
+
+	const thumb = (picked: boolean) => ({
+		fill: "currentColor",
+		initial: false,
+		animate: { fillOpacity: picked ? 1 : 0, scale: picked && !prefersReducedMotion ? [1, motionScale.pickIcon, 1] : 1 },
+		transition: resolve({ ...standardTransition, fillOpacity: { duration: motionDuration.fast } }),
+	});
+
+	return (
+		<AnimatePresence initial={false} mode='popLayout'>
+			{(["up", "down"] as const)
+				.filter((choice) => rating === null || rating === choice)
+				.map((choice) => (
+					<motion.span
+						key={choice}
+						layout={!prefersReducedMotion}
+						className='flex'
+						variants={prefersReducedMotion ? iconSwapReducedVariants : iconSwapVariants}
+						initial='hidden'
+						animate='shown'
+						exit='hidden'
+						transition={{ layout: layoutSpring }}
+					>
+						{choice === "up" ? (
+							<IconAction label='Good response' pressed={rating === "up"} onClick={() => toggle("up")}>
+								<MotionThumbsUp {...thumb(rating === "up")} />
+							</IconAction>
+						) : (
+							<IconAction label='Bad response' pressed={rating === "down"} onClick={() => toggle("down")}>
+								<MotionThumbsDown {...thumb(rating === "down")} />
+							</IconAction>
+						)}
+					</motion.span>
+				))}
+		</AnimatePresence>
+	);
+}
+
+/** Buttons after `FeedbackButtons` in a row: they glide over when a choice hides, instead of jumping. */
+function ShiftsWithFeedback({ children }: { children: ReactNode }) {
+	const { prefersReducedMotion } = useMotionPreference();
+	return (
+		<motion.span layout={!prefersReducedMotion} transition={{ layout: layoutSpring }} className='flex items-center'>
+			{children}
+		</motion.span>
+	);
 }
 
 /** The spinner, check, cross or dash in front of a step, by its state. */
@@ -922,7 +990,6 @@ function FilesProcessed({ block, onViewCode }: { block: Block<"files">; onViewCo
 
 /** Figma "Versions": the result of a build. The current one has a green check; earlier ones can be restored. */
 function VersionCard({ block, onRestore }: { block: Block<"version">; onRestore: (version: number) => void }) {
-	const { rating, toggle } = useFeedback();
 	const [saved, setSaved] = useState(false);
 
 	return (
@@ -948,22 +1015,22 @@ function VersionCard({ block, onRestore }: { block: Block<"version">; onRestore:
 					</>
 				)}
 			</div>
-			<div className='flex items-center'>
-				<IconAction label='Helpful' pressed={rating === "up"} onClick={() => toggle("up")}>
-					<ThumbsUp />
-				</IconAction>
-				<IconAction label='Not helpful' pressed={rating === "down"} onClick={() => toggle("down")}>
-					<ThumbsDown />
-				</IconAction>
-				<IconAction label="Bookmark" pressed={saved} onClick={() => setSaved((current) => !current)}>
-					<Bookmark />
-				</IconAction>
+			<div className='relative flex items-center'>
+				<FeedbackButtons />
+				<ShiftsWithFeedback>
+					<IconAction label="Bookmark" pressed={saved} onClick={() => setSaved((current) => !current)}>
+						<Bookmark />
+					</IconAction>
+				</ShiftsWithFeedback>
 			</div>
 		</div>
 	);
 }
 
-/** Under a finished reply: copy, helpful / not helpful, and retry (Feedback Loops). */
+/** Under a finished reply: copy, good / bad response, and retry (Feedback Loops). */
+/** The check that replaces Copy once copied: `foreground`, over the action icons' `foreground-subtle` (`!`, since the button colors its icon through a descendant selector). */
+const CopiedCheck = () => <Check className='text-foreground!' />;
+
 /** Copies text to the clipboard. `copied` stays true for 1.5s after, so the button can say "Copied". */
 function useCopy(text: string) {
 	const [copied, setCopied] = useState(false);
@@ -976,46 +1043,44 @@ function useCopy(text: string) {
 }
 
 /**
- * Copy and Retry for the person's message, below its bubble on the right. They show while the message is hovered
- * (`group/message` on its row) or when one of them has keyboard focus, and keep their place while hidden. Retry sends
- * the message again.
+ * Copy and Retry for the person's message, below its bubble on the right, in the thread's gap. They show while the
+ * message is hovered (`group/message` on its row) or when one of them has keyboard focus. Retry sends the message again.
  */
 function MessageActions({ text, onRetry }: { text: string; onRetry: () => void }) {
 	const { copied, copy } = useCopy(text);
 
 	return (
-		<div className='flex shrink-0 items-center opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100'>
-			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy}>
-				{copied ? <Check /> : <Copy />}
+		// Below the bubble, its buttons 2px down, over the thread's 24px gap, so it takes no space. Hidden, it lets clicks
+		// through. The 2px is padding, not margin: the row touches the bubble, so moving the pointer from the bubble to a
+		// button never leaves the hover area and the actions stay.
+		<div className='pointer-events-none absolute top-full right-0 flex pt-0.5 items-center opacity-0 transition-opacity group-hover/message:pointer-events-auto group-hover/message:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100'>
+			{/* Tooltips below: above, they'd cover the bubble the pointer comes from. */}
+			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy} side='bottom'>
+				{copied ? <CopiedCheck /> : <Copy />}
 			</IconAction>
-			<IconAction label='Retry' onClick={onRetry}>
-				<RotateCcw />
+			<IconAction label='Retry' onClick={onRetry} side='bottom'>
+				<RotateCw />
 			</IconAction>
 		</div>
 	);
 }
 
 function ResponseActions({ text, onRetry }: { text: string; onRetry?: () => void }) {
-	const { rating, toggle } = useFeedback();
 	const { copied, copy } = useCopy(text);
 
 	return (
-		// Close under the reply: 4px after it instead of the turn's 16px gap; with the buttons' own 4px, the icons sit 8px
-		// below the text.
-		<div className='-mt-3 flex items-center'>
+		// Below the reply, 2px down, over the thread's 24px gap, so it takes no space; the turn is `relative`.
+		<div className='absolute top-full left-0 mt-0.5 flex items-center'>
 			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy}>
-				{copied ? <Check /> : <Copy />}
+				{copied ? <CopiedCheck /> : <Copy />}
 			</IconAction>
-			<IconAction label='Helpful' pressed={rating === "up"} onClick={() => toggle("up")}>
-				<ThumbsUp />
-			</IconAction>
-			<IconAction label='Not helpful' pressed={rating === "down"} onClick={() => toggle("down")}>
-				<ThumbsDown />
-			</IconAction>
+			<FeedbackButtons />
 			{onRetry && (
-				<IconAction label='Retry' onClick={onRetry}>
-					<RotateCcw />
-				</IconAction>
+				<ShiftsWithFeedback>
+					<IconAction label='Retry' onClick={onRetry}>
+						<RotateCw />
+					</IconAction>
+				</ShiftsWithFeedback>
 			)}
 		</div>
 	);
@@ -1039,7 +1104,7 @@ function ErrorCard({ block, onRetry }: { block: Block<"error">; onRetry: (messag
 						onClick={() => !block.retried && block.retry && onRetry(block.retry)}
 						className='self-start'
 					>
-						<RotateCcw data-icon='inline-start' />
+						<RotateCw data-icon='inline-start' />
 						{block.retried ? "Retried" : block.retry}
 					</Button>
 				)}

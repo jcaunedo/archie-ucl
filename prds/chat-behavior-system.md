@@ -87,7 +87,7 @@ This doc defines the conversation model: what the chat does, how Archie behaves,
 | Files processed | Files written: live count, then "56 files processed · View in Code"; expands to the list with New/Modified, time and credits | Thought sheet "File 1", "Files", "Files Expanded"; File Process Expanded `1984:11642` | Tool Use, Cost Transparency | New part |
 | Code stream | "Writing: src/styles/theme.css" with the code streaming in | Writing Code `2198:16206`, code streaming `2231:48935` | Streaming, Chat Artifacts | New part |
 | Version card | The result of a build; current or restorable | Versions sheet `1988:12207`, Several Versions `2000:12295` | Checkpoints and Restore | New part |
-| Response actions | Copy, helpful / not helpful, retry under a reply; helpful / not helpful, save under a version | Resolved `3581:16933` | Feedback Loops | New part on `Button` |
+| Response actions | Copy, good / bad response, retry under a reply; good / bad response, save under a version | Resolved `3581:16933` | Feedback Loops | New part on `Button` |
 | Error card | What failed, what's unchanged, Retry | — (not in Figma) | Failure Disclosure | New part |
 | Suggested prompts | Starters in an empty chat (follow-ups are now the "What's next" card) | Suggested Follow-up Actions `2129:14006` | Prompt Starters, Follow-up Chips | New part on `Button` |
 | Queue | Messages waiting while Archie works, each removable | Queue-01…04 `3527:3688`…, Queue - Inline `3549:4020` | Interrupt and Resume | New part |

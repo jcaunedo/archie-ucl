@@ -423,8 +423,11 @@ export const RetryMessage: Story = {
 		const row = canvas.getAllByText(question).at(-1)!.closest<HTMLElement>("[data-thread-item]")!;
 		const retry = within(row).getByRole("button", { name: "Retry" });
 		const actions = retry.parentElement!;
-		// Below the bubble, hidden until hover or keyboard focus (the test's hover is synthetic, so it checks focus).
-		await expect(actions.getBoundingClientRect().top).toBeGreaterThan(row.firstElementChild!.getBoundingClientRect().bottom);
+		// 2px below the bubble, hidden until hover or keyboard focus (the test's hover is synthetic, so it checks focus).
+		const bubble = row.firstElementChild!.getBoundingClientRect();
+		// The row touches the bubble (one hover area); its buttons start 2px down.
+		await expect(actions.getBoundingClientRect().top - bubble.bottom).toBeCloseTo(0, 0);
+		await expect(retry.getBoundingClientRect().top - bubble.bottom).toBeCloseTo(2, 0);
 		await expect(getComputedStyle(actions).opacity).toBe("0");
 		retry.focus();
 		await waitFor(() => expect(getComputedStyle(actions).opacity).toBe("1"));
@@ -598,7 +601,10 @@ export const SlashCommand: Story = {
 	},
 };
 
-/** A plain answer (Level 1). Test: Archie's reply streams in, then gets copy, feedback and retry. */
+/**
+ * A plain answer (Level 1). Test: Archie's reply streams in, then gets copy, feedback and retry; rating it hides the other
+ * choice and fills the pick, and picking it again clears it.
+ */
 export const ArchieReplies: Story = {
 	args: {
 		data: sampleVersionHistory,
@@ -611,6 +617,18 @@ export const ArchieReplies: Story = {
 		// The latest reply's Copy (the blueprint overview, a Level 2 answer, has its own).
 		await expect(canvas.getAllByRole("button", { name: "Copy" }).at(-1)).toBeInTheDocument();
 		await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
+
+		// Rating it: the pick hides the other and goes solid; picking it again brings both back.
+		const actions = within(canvas.getAllByRole("button", { name: "Copy" }).at(-1)!.parentElement!);
+		await userEvent.click(actions.getByRole("button", { name: "Bad response" }));
+		await waitFor(() => expect(actions.queryByRole("button", { name: "Good response" })).not.toBeInTheDocument());
+		const bad = actions.getByRole("button", { name: "Bad response" });
+		const fill = () => getComputedStyle(bad.querySelector("svg")!).fillOpacity;
+		await expect(bad).toHaveAttribute("aria-pressed", "true");
+		await waitFor(() => expect(fill()).toBe("1"));
+		await userEvent.click(bad);
+		await expect(actions.getByRole("button", { name: "Good response" })).toBeInTheDocument();
+		await waitFor(() => expect(fill()).toBe("0"));
 	},
 };
 
