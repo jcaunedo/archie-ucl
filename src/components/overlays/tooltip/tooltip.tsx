@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cva, type VariantProps } from "class-variance-authority";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 
 import { enterTransition, motionDistance, useMotionPreference } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -65,16 +65,21 @@ type TooltipContentProps = React.ComponentProps<typeof TooltipPrimitive.Content>
 function TooltipContent({ className, size = "default", sideOffset = 4, children, ...props }: TooltipContentProps) {
 	return (
 		<TooltipPrimitive.Portal>
-			<TooltipPrimitive.Content
-				asChild
-				data-slot='tooltip-content'
-				data-size={size}
-				sideOffset={sideOffset}
-				className={cn(tooltipContentVariants({ size }), className)}
-				{...props}
-			>
-				<TooltipSurface>{children}</TooltipSurface>
-			</TooltipPrimitive.Content>
+			{/* Its own presence: a trigger inside `AnimatePresence initial={false}` (a list shown as it is) would otherwise
+			    pass that on through the portal, and the tooltip would appear without its entrance. */}
+			<AnimatePresence>
+				<TooltipPrimitive.Content
+					key='tooltip'
+					asChild
+					data-slot='tooltip-content'
+					data-size={size}
+					sideOffset={sideOffset}
+					className={cn(tooltipContentVariants({ size }), className)}
+					{...props}
+				>
+					<TooltipSurface>{children}</TooltipSurface>
+				</TooltipPrimitive.Content>
+			</AnimatePresence>
 		</TooltipPrimitive.Portal>
 	);
 }

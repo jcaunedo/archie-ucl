@@ -85,8 +85,9 @@ function IconAction({
 	compact?: boolean;
 	children: ReactNode;
 }) {
+	// The tooltip ignores the pointer, so it isn't hoverable: it closes as the pointer leaves the button.
 	return (
-		<Tooltip>
+		<Tooltip disableHoverableContent>
 			<TooltipTrigger asChild>
 				<Button
 					variant='ghost'
@@ -121,7 +122,7 @@ const MotionThumbsDown = motion.create(ThumbsDown);
  * the buttons after it glide over (`layout`; wrap them in `ShiftsWithFeedback`); the pick fills and swells to
  * `motionScale.pickIcon` and settles (Confirm). Under reduced motion, it all happens at once.
  */
-function FeedbackButtons({ compact = false }: { compact?: boolean }) {
+function FeedbackButtons({ compact = false, side }: { compact?: boolean; side?: "top" | "bottom" }) {
 	const [rating, setRating] = useState<"up" | "down" | null>(null);
 	const toggle = (next: "up" | "down") => setRating((current) => (current === next ? null : next));
 	const { prefersReducedMotion, resolve } = useMotionPreference();
@@ -149,11 +150,11 @@ function FeedbackButtons({ compact = false }: { compact?: boolean }) {
 						transition={{ layout: layoutSpring }}
 					>
 						{choice === "up" ? (
-							<IconAction label='Good response' pressed={rating === "up"} onClick={() => toggle("up")} compact={compact}>
+							<IconAction label='Good response' pressed={rating === "up"} onClick={() => toggle("up")} compact={compact} side={side}>
 								<MotionThumbsUp {...thumb(rating === "up")} />
 							</IconAction>
 						) : (
-							<IconAction label='Bad response' pressed={rating === "down"} onClick={() => toggle("down")} compact={compact}>
+							<IconAction label='Bad response' pressed={rating === "down"} onClick={() => toggle("down")} compact={compact} side={side}>
 								<MotionThumbsDown {...thumb(rating === "down")} />
 							</IconAction>
 						)}
@@ -1106,13 +1107,14 @@ function ResponseActions({ text, onRetry }: { text: string; onRetry?: () => void
 		// In the gap below the reply, so it takes no space: 20px buttons 4px down, then 8px (the turn's `mb-2`) before the
 		// next message (decision 2026-10-29). The turn is `relative`.
 		<div className='absolute top-full left-0 flex pt-1'>
-			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy} compact>
+			{/* Tooltips below, as under a message: above, they'd cover the reply. */}
+			<IconAction label={copied ? "Copied" : "Copy"} onClick={copy} compact side='bottom'>
 				{copied ? <CopiedCheck /> : <Copy />}
 			</IconAction>
-			<FeedbackButtons compact />
+			<FeedbackButtons compact side='bottom' />
 			{onRetry && (
 				<ShiftsWithFeedback>
-					<IconAction label='Retry' onClick={onRetry} compact>
+					<IconAction label='Retry' onClick={onRetry} compact side='bottom'>
 						<RotateCw />
 					</IconAction>
 				</ShiftsWithFeedback>
