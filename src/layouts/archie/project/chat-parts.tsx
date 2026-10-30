@@ -358,10 +358,11 @@ function ElapsedTime({ since }: { since: number }) {
 }
 
 /**
- * A finished step's check, drawn on from its short stroke (Draw). Lucide's Check path, reversed so the stroke starts at
- * the short end, so it matches the other checks.
+ * A check drawn on from its short stroke (Draw): a finished step in the feed, or Copy once copied. Lucide's Check path,
+ * reversed so the stroke starts at the short end, so it matches the other checks. `className` sizes and colors it (the
+ * feed's 14px muted check by default).
  */
-function DrawnCheck() {
+function DrawnCheck({ className = "size-3.5 text-icon-muted" }: { className?: string }) {
 	const { prefersReducedMotion } = useMotionPreference();
 	return (
 		<svg
@@ -372,7 +373,7 @@ function DrawnCheck() {
 			strokeWidth={2}
 			strokeLinecap='round'
 			strokeLinejoin='round'
-			className='size-3.5 text-icon-muted'
+			className={className}
 		>
 			<motion.path
 				d='M4 12l5 5L20 6'
@@ -1033,9 +1034,11 @@ function VersionCard({ block, onRestore }: { block: Block<"version">; onRestore:
 	);
 }
 
-/** Under a finished reply: copy, good / bad response, and retry (Feedback Loops). */
-/** The check that replaces Copy once copied: `foreground`, over the action icons' `foreground-subtle` (`!`, since the button colors its icon through a descendant selector). */
-const CopiedCheck = () => <Check className='text-foreground!' />;
+/**
+ * The check that replaces Copy once copied, drawn on (Draw). `foreground`, over the action icons' `foreground-subtle`
+ * (`!`, since the button colors its icon through a descendant selector); the button sizes it.
+ */
+const CopiedCheck = () => <DrawnCheck className='text-foreground!' />;
 
 /** Copies text to the clipboard. `copied` stays true for 1.5s after, so the button can say "Copied". */
 function useCopy(text: string) {
@@ -1092,6 +1095,7 @@ function MessageActions({ text, sentAt, onRetry }: { text: string; sentAt: numbe
 	);
 }
 
+/** Under a finished reply: copy, good / bad response, and retry (Feedback Loops). */
 function ResponseActions({ text, onRetry }: { text: string; onRetry?: () => void }) {
 	const { copied, copy } = useCopy(text);
 
