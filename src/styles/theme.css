@@ -33,6 +33,7 @@
 	--color-card-muted: var(--card-muted);
 	--color-card-defined: var(--card-defined);
 	--color-border-subtle: var(--border-subtle);
+	--color-border-defined: var(--border-defined);
 	--color-border-muted: var(--border-muted);
 	--color-modal: var(--modal);
 	--color-input-disabled: var(--input-disabled);
@@ -313,6 +314,7 @@
 	--card-muted: var(--gray-100);
 	--card-defined: var(--gray-200);
 	--border-subtle: var(--gray-50);
+	--border-defined: var(--gray-300);
 	--border-muted: var(--gray-100);
 	--modal: var(--white);
 	--input-disabled: var(--gray-100);
@@ -413,6 +415,7 @@
 	--card-muted: var(--gray-900);
 	--card-defined: var(--gray-900);
 	--border-subtle: var(--gray-800);
+	--border-defined: var(--gray-800);
 	--border-muted: var(--gray-800);
 	--modal: var(--gray-700);
 	--input-disabled: var(--gray-800);

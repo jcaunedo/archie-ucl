@@ -51,13 +51,14 @@ function ArchieSymbol() {
 }
 
 /**
- * Figma archie.ds "loader" → "Property 1=steps": the node, 11px across with a 2px stroke, on a 2px line, all in 28 (scaled
- * with the frame). The line runs past the frame, 5px above and 4px below, so steps stacked with a 4px gap join up.
+ * Figma archie.ds "loader" → "Property 1=steps": the node (hollow, `foreground-subtle` ring on `background`), 11px across
+ * with a 2px stroke, on a 2px `border-defined` line, all in 28 (scaled with the frame). The line runs past the frame, 5px above and 4px below, so steps stacked with a 4px gap join up.
  */
 function StepsNode() {
 	return (
 		<svg viewBox='0 0 28 37' fill='none' className='absolute top-[-17.86%] left-0 h-[132.14%] w-full'>
-			<path d='M13.5 0V37' stroke='currentColor' strokeWidth={2} />
+			{/* Figma `border/defined`. */}
+			<path d='M13.5 0V37' strokeWidth={2} className='stroke-border-defined' />
 			<circle cx='13.5' cy='18.5' r='5.5' stroke='currentColor' strokeWidth={2} className='fill-background' />
 		</svg>
 	);

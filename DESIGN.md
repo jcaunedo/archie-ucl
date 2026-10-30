@@ -565,6 +565,7 @@ const { resolve } = useMotionPreference();
 | `--destructive-foreground` | `tone/brand/on-brand` | Button Solid · Destructive binds its label to `on-brand`. There's no `on-destructive` |
 | `--muted` / `-foreground` | `background/muted` / `foreground/muted` | |
 | `--input` | `input/border` | Button Outlined stroke |
+| `--border-defined` | `border/defined` | Archie gray-300, Archie-dark gray-800. A stronger line than `--border`: the timeline in Loader's `steps` state and the expanded "Thought for…" steps. Added 2026-10-29 |
 | `--ring` | `input/ring-focus` | Focus ring. `input/ring` → `--input-ring` |
 | `--card-foreground`, `--popover-foreground` | `foreground/foreground` | No Figma variable of their own |
 | `--tone-accent*` | `tone/accent/*` | Prefixed: Figma's "accent" tone (dark gray) is not shadcn's `--accent` |
