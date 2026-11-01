@@ -1,0 +1,339 @@
+import type { TargetAndTransition, Transition, Variants } from "motion/react";
+
+import { motionDistance, motionDuration, motionScale, motionStagger } from "./tokens";
+import { enterTransition, exitTransition, standardTransition, swapEnterTransition } from "./transitions";
+import { reducedMotionTransition } from "./reduced-motion";
+
+/**
+ * Reusable `Variants` for `initial`/`animate`/`exit`. Named after the
+ * motion vocabulary — use these before inventing a new variant.
+ * Each expects the component to also pass the matching transition (or
+ * relies on the one embedded below where the pattern is direction-neutral).
+ */
+
+/** Plain opacity fade — no movement. Crossfades, simple mount/unmount. */
+const fadeVariants: Variants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: standardTransition },
+  exit: { opacity: 0, transition: exitTransition },
+};
+
+/** Content appearing in context: fade + small upward move (Reveal). */
+const revealVariants: Variants = {
+  initial: { opacity: 0, y: motionDistance.subtle },
+  animate: { opacity: 1, y: 0, transition: enterTransition },
+  exit: { opacity: 0, y: motionDistance.subtle, transition: exitTransition },
+};
+
+/**
+ * An existing region opening/closing in place, from its top edge like an accordion (Expand):
+ * height 0 → auto with a fade. The caller clips the element only while it animates
+ * (`overflow: hidden` from `onAnimationStart` to `onAnimationComplete`), so focus rings and
+ * shadows aren't cut once open: spread `useExpandClip()` onto it.
+ */
+const expandVariants: Variants = {
+  initial: { height: 0, opacity: 0 },
+  animate: { height: "auto", opacity: 1, transition: standardTransition },
+  // Documented exception to "exit shorter than enter": an ease-in height collapse ends at full
+  // speed and reads as a hard stop, so the height closes on the same decelerating curve as the
+  // open, while the content fades out on the (quicker) exit timing and is gone before it settles.
+  exit: {
+    height: 0,
+    opacity: 0,
+    transition: { ...standardTransition, opacity: exitTransition },
+  },
+};
+
+/** Content being removed/closed: shorter than its entrance (Dismiss). */
+const dismissVariants: Variants = {
+  initial: { opacity: 1, y: 0 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: motionDistance.hover, transition: exitTransition },
+};
+
+/**
+ * A table/list row removed from its data: the
+ * row fades out on the exit timing (Dismiss), then the rows below glide up into its space. Opacity
+ * only — no `y` nudge, which would push a `<tr>` over the next row's border. `initial` equals
+ * `animate`, so rows added by a routine data update just appear (no replayed entrance).
+ *
+ * Wiring (each piece is load-bearing):
+ * - `<AnimatePresence initial={false}>` around the rows, in the default `"sync"` mode — never
+ *   `"popLayout"`, which pulls the exiting element out with `position: absolute`; a `<tr>` loses
+ *   its table layout that way and its cells collapse.
+ * - Each row: `layout="position"` + `transition={{ layout: resolve(layoutSpring) }}`
+ *   (`useMotionPreference`), so under reduced motion the gap closes at once and only the fade
+ *   remains as feedback. Stable unique `key`s (the record id, never the index).
+ */
+const rowRemoveVariants: Variants = {
+  initial: { opacity: 1 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0, transition: exitTransition },
+};
+
+/**
+ * Overlay/scrim backdrop for dialogs and overlays (fade only — the dialog
+ * surface itself should use `panelVariants` or a Motion `layout` animation).
+ */
+const overlayVariants: Variants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: standardTransition },
+  exit: { opacity: 0, transition: exitTransition },
+};
+
+/**
+ * Drawer/panel surface sliding in from an edge. Callers should set the
+ * appropriate axis before spreading — this default assumes a right-edge
+ * panel (matching most drawer usage); pass a custom `initial`/`exit` `x`/`y`
+ * for other edges rather than forking this variant.
+ */
+const panelVariants: Variants = {
+  initial: { opacity: 0, x: motionDistance.medium },
+  animate: { opacity: 1, x: 0, transition: standardTransition },
+  exit: { opacity: 0, x: motionDistance.medium, transition: exitTransition },
+};
+
+/**
+ * Directional screen/section transition (Glide) — match the
+ * direction of navigation: pass `custom={1}` to slide in from the right
+ * (the "forward"/push case, e.g. navigating into a sub-page) or
+ * `custom={-1}` to slide in from the left ("back"/pop, e.g. returning to a
+ * parent screen). The outgoing screen continues in the *same* direction
+ * the incoming screen is heading, so the pair reads as one continuous
+ * strip sliding through rather than converging on the same side.
+ *
+ * Unlike `glidePattern` (a gesture-prop bundle with no transition of its
+ * own), this is `Variants`-shaped for `AnimatePresence` mount/unmount and
+ * uses `enterTransition`/`exitTransition` like the rest of this file. Each
+ * key is a function of Motion's `custom` prop (not a `direction` argument
+ * called ahead of time) — this matters for `AnimatePresence`: an exiting
+ * element's `custom` is snapshotted at the moment it's removed, so its
+ * `exit` animation stays correct even if the direction state driving new
+ * renders has already changed by the time the exit plays out. Usage:
+ * `<motion.div custom={direction} variants={slideVariants} ... />`.
+ */
+const slideVariants: Variants = {
+  initial: (direction: 1 | -1 = 1) => ({
+    opacity: 0,
+    x: direction * motionDistance.medium,
+  }),
+  animate: { opacity: 1, x: 0, transition: enterTransition },
+  exit: (direction: 1 | -1 = 1) => ({
+    opacity: 0,
+    x: -direction * motionDistance.medium,
+    transition: exitTransition,
+  }),
+};
+
+/**
+ * Stagger container for the Flow pattern — small groups of related items
+ * entering together. Apply to the parent; children should use
+ * `revealVariants` (or similar) and inherit timing via variant propagation.
+ */
+const staggerContainerVariants: Variants = {
+  initial: {},
+  animate: {
+    transition: {
+      staggerChildren: motionStagger.fast,
+      delayChildren: 0,
+    },
+  },
+};
+
+/**
+ * Swap: two small elements stacked in place, one handing off to the other (e.g. a logo mark and
+ * an expand icon on hover). Animate the one leaving to `hidden` and the one
+ * arriving to `shown`: the leaving one dissolves quickly (`exitTransition`) while the arriving one
+ * fades in and grows from `motionScale.swapIn` (`swapEnterTransition`).
+ * - `iconSwapReducedVariants` — the same states under reduced motion: an instant switch, no fade or
+ *   scale. The variants carry their own transitions (which win over a component's `transition`
+ *   prop), so reduced motion needs its own variants rather than a `resolve()` override.
+ */
+const iconSwapVariants: Variants = {
+  shown: { opacity: 1, scale: 1, transition: swapEnterTransition },
+  hidden: { opacity: 0, scale: motionScale.swapIn, transition: exitTransition },
+};
+
+const iconSwapReducedVariants: Variants = {
+  shown: { opacity: 1, scale: 1, transition: reducedMotionTransition },
+  hidden: { opacity: 0, scale: 1, transition: reducedMotionTransition },
+};
+
+/**
+ * Draw: a stroked mark drawn on as it appears, e.g. a step's check when the step finishes (ActivityFeed). Put it on a
+ * `motion.path` (`pathLength` 0 → 1) whose path starts where the stroke should start (a check: the short stroke first).
+ * The stroke draws on the standard curve; it's visible at once so the line's start shows. Under reduced motion, use
+ * `iconSwapReducedVariants` (the same states): the mark appears at once.
+ */
+const drawVariants: Variants = {
+  hidden: { pathLength: 0, opacity: 0 },
+  shown: {
+    pathLength: 1,
+    opacity: 1,
+    transition: { pathLength: standardTransition, opacity: { duration: motionDuration.instant } },
+  },
+};
+
+/**
+ * Grow in: a small icon appearing in place, e.g. a check when a step finishes (Loader's brand and done). It grows from
+ * `motionScale.iconIn` on the standard curve, slow enough that the growth reads at 16px, while the fade finishes sooner
+ * (as Slide up does). Show it on a row that's already in place, not one that's fading in, or the fade hides the growth.
+ * Mount it with `initial='hidden'` and `animate='shown'`. Under reduced motion, use `iconSwapReducedVariants` (the same
+ * states): an instant switch.
+ */
+const iconInVariants: Variants = {
+  hidden: { opacity: 0, scale: motionScale.iconIn },
+  shown: {
+    opacity: 1,
+    scale: 1,
+    transition: { ...standardTransition, duration: motionDuration.slow, opacity: { duration: motionDuration.normal } },
+  },
+};
+
+/**
+ * Pending: something is working on the element's behalf (e.g. AI generating text). A looping
+ * pulse — `animate="pending"` while busy, `"idle"` otherwise; returning to idle eases back to rest.
+ * An opacity pulse, like a loading skeleton. Three variants:
+ * - `pendingIconVariants` — the small control that started the work: scale + fade.
+ * - `pendingIconReducedVariants` — the same control under reduced motion: fade only, no scale.
+ * - `pendingSurfaceVariants` — the content being worked on (a field, a card): fade only.
+ * - `pendingSpinnerVariants` — a spinner that replaces a label while its button works (Button `pending`).
+ * - `pendingTextVariants` — a status label that is still working ("Thinking…"): a highlight sweeps across it.
+ * - `pendingBallVariants` — the icon beside that label: a ball bouncing with real physics.
+ */
+const pendingLoop = { duration: motionDuration.pendingLoop, repeat: Infinity, ease: "easeInOut" } as const;
+
+const pendingIconVariants: Variants = {
+  idle: { scale: 1, opacity: 1, transition: standardTransition },
+  pending: { scale: [1, motionScale.pendingIcon, 1], opacity: [1, 0.35, 1], transition: pendingLoop },
+};
+
+const pendingIconReducedVariants: Variants = {
+  idle: { opacity: 1, transition: standardTransition },
+  pending: { opacity: [1, 0.35, 1], transition: pendingLoop },
+};
+
+const pendingSurfaceVariants: Variants = {
+  idle: { opacity: 1, transition: standardTransition },
+  pending: { opacity: [1, 0.5, 1], transition: pendingLoop },
+};
+
+/**
+ * A spinner for work in progress (Button `pending`, Figma State=Loading): one full turn per `pendingLoop`, linear, looping.
+ * Under reduced motion, use `pendingIconReducedVariants` instead: the spinner pulses in place.
+ */
+const pendingSpinnerVariants: Variants = {
+  idle: { rotate: 0 },
+  pending: { rotate: 360, transition: { duration: motionDuration.pendingLoop, repeat: Infinity, ease: "linear" } },
+};
+
+/**
+ * Slide up: content taking over a spot rises gently into place while it fades in (the next clarifying question, the
+ * permission prompt). Subtle: 12px on the standard curve, slow enough that the rise reads; the fade finishes sooner.
+ * Leaving, it slides back down the same 12px as it fades, on the quicker exit timing (a decided permission prompt).
+ * Under reduced motion, use `fadeVariants`.
+ */
+const slideUpVariants: Variants = {
+  initial: { opacity: 0, y: motionDistance.small },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { ...standardTransition, duration: motionDuration.slow, opacity: { duration: motionDuration.normal } },
+  },
+  exit: { opacity: 0, y: motionDistance.small, transition: exitTransition },
+};
+
+/**
+ * Feed: a live list where each new item slides up into place at the bottom and the oldest slides up and out at the top
+ * (Archie's activity feed). Use with `AnimatePresence mode="popLayout"`, a stable key per item and `layout` (on
+ * `layoutSpring`) on each item, so the others move up together. Under reduced motion, use `fadeVariants` without `layout`.
+ */
+const feedItemVariants: Variants = {
+  initial: { opacity: 0, y: motionDistance.subtle },
+  animate: { opacity: 1, y: 0, transition: enterTransition },
+  exit: { opacity: 0, y: -motionDistance.subtle, transition: exitTransition },
+};
+
+/**
+ * A status label that is still working ("Thinking…"): a highlight sweeps across the text, left to right. The variant
+ * brings its own fill: a gradient of the text's color three times the label's width, fading to 15% of that color in the
+ * middle third, so the highlight enters and leaves off-screen and the loop has no seam. The text itself is hidden with
+ * `WebkitTextFillColor`, not `color`, so `currentColor` stays the label's color. `idle` is the plain text: use it under
+ * reduced motion.
+ */
+// The text's own fill. Motion's types leave out vendor-prefixed styles, but it sets them on the element like any other.
+const textFill = (color: string) => ({ WebkitTextFillColor: color }) as TargetAndTransition;
+
+const pendingTextVariants: Variants = {
+  idle: {
+    ...textFill("currentcolor"),
+    backgroundImage: "none",
+    transition: { duration: 0 },
+  },
+  pending: {
+    backgroundImage:
+      "linear-gradient(90deg, currentColor 35%, color-mix(in oklab, currentColor 15%, var(--background)) 50%, currentColor 65%)",
+    backgroundSize: "300% 100%",
+    backgroundClip: "text",
+    ...textFill("transparent"),
+    backgroundPosition: ["100% 0%", "0% 0%"],
+    transition: {
+      default: { duration: 0 },
+      backgroundPosition: { duration: motionDuration.pendingShimmer, repeat: Infinity, ease: "linear" },
+    },
+  },
+};
+
+/**
+ * The activity ball (ActivityIndicator): a ball bouncing on a floor, with real physics. It falls under gravity, speeding
+ * up (a quadratic ease-in, the curve of free fall); squashes on contact, wider and shorter with about the same area;
+ * springs off and rises slowing down (a quadratic ease-out), stretched a little along the motion while it's fastest.
+ * Contact sits in the middle of each `pendingBounce` loop. Scale it from its bottom (`originY: 1`), so the squash stays
+ * on the floor. It rises `motionDistance.bounce` (px); a ball that scales with its box passes `custom` as a share of its
+ * own height instead (Loader: `${motionScale.ballRise * 100}%`).
+ */
+const gravityIn = [0.11, 0, 0.5, 0] as const;
+const gravityOut = [0.5, 1, 0.89, 1] as const;
+const bounceLoop = { duration: motionDuration.pendingBounce, repeat: Infinity } as const;
+// Squash and stretch: stretch builds with speed on the way down, the squash peaks mid-contact, and both relax as the
+// ball slows on the way up.
+const squashTiming: Transition = {
+  ...bounceLoop,
+  times: [0, 0.43, 0.5, 0.57, 1],
+  ease: ["easeIn", "easeOut", "easeIn", "easeOut"],
+};
+const flightTiming: Transition = { ...bounceLoop, times: [0, 0.45, 0.55, 1], ease: [gravityIn, "linear", gravityOut] };
+
+const pendingBallVariants: Variants = {
+  idle: { y: 0, scaleX: 1, scaleY: 1, transition: standardTransition },
+  pending: (bounce: number | `${number}%` = motionDistance.bounce) => ({
+    y: typeof bounce === "number" ? [-bounce, 0, 0, -bounce] : [`-${bounce}`, "0%", "0%", `-${bounce}`],
+    scaleX: [1, motionScale.ballNarrow, motionScale.ballSpread, motionScale.ballNarrow, 1],
+    scaleY: [1, motionScale.ballStretch, motionScale.ballSquash, motionScale.ballStretch, 1],
+    transition: { y: flightTiming, scaleX: squashTiming, scaleY: squashTiming },
+  }),
+};
+
+export {
+  fadeVariants,
+  feedItemVariants,
+  slideUpVariants,
+  rowRemoveVariants,
+  revealVariants,
+  expandVariants,
+  dismissVariants,
+  overlayVariants,
+  panelVariants,
+  slideVariants,
+  staggerContainerVariants,
+  iconSwapVariants,
+  iconSwapReducedVariants,
+  iconInVariants,
+  drawVariants,
+  pendingIconVariants,
+  pendingIconReducedVariants,
+  pendingSurfaceVariants,
+  pendingTextVariants,
+  pendingSpinnerVariants,
+  pendingBallVariants,
+};

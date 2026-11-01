@@ -1,0 +1,15 @@
+export {
+	PromptComposer,
+	PromptComposerButton,
+	PromptComposerCommands,
+	PromptComposerFooter,
+	PromptComposerSubmit,
+	PromptComposerTextarea,
+	type PromptComposerButtonProps,
+	type PromptComposerCommand,
+	type PromptComposerCommandsProps,
+	type PromptComposerFooterProps,
+	type PromptComposerProps,
+	type PromptComposerSubmitProps,
+	type PromptComposerTextareaProps,
+} from "./prompt-composer";

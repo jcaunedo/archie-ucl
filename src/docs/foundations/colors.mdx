@@ -1,0 +1,59 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+import themeCss from "../../styles/theme.css?raw";
+import { ColorTokens, PrimitiveRamps } from "./color-tokens";
+
+<Meta title='Foundations/Colors' />
+
+# Colors
+
+Every color in UCL is a token in `src/styles/theme.css`, synced from the `semantic` collection of the **archielabs.ds** Figma file: its **Archie** mode is the light theme and **Archie-dark** the dark one. Use tokens through their Tailwind utilities, never as raw values: `brand-subtle` is available as `bg-brand-subtle`, `text-brand-subtle`, `border-brand-subtle`, and so on.
+
+## How tokens are named
+
+- **Two tiers.** Primitive ramps (`gray`, `vermilion`, `sky` and the status ramps) hold the raw colors. Semantic tokens (`primary`, `foreground`, `border`, `brand-subtle`) point at them and name what the color does. Components only use semantic tokens.
+- **shadcn roles first.** `background`, `foreground`, `card`, `popover`, `primary`, `secondary`, `muted`, `accent`, `destructive`, `border`, `input` and `ring` keep their shadcn names, so shadcn components work unchanged. Pair each surface with its `-foreground` token.
+- **Brand is vermilion.** `primary` and `brand` are `vermilion-500`. `secondary` is the light brand fill (`brand-subtle`).
+- **Tones come in strengths.** Each tone (`brand`, `tone-accent`, `emphasis`, `neutral`, `info`, `success`, `warning`, `destructive`) has the strong color plus `-subtle` and `-muted` fills, and most have `-defined` and `-foreground`.
+- **`accent` isn't the accent color.** shadcn's `accent` is the hover and selected surface. The design system's dark-gray accent tone is `tone-accent`.
+- **Primitives aren't utilities.** `bg-gray-100` is Tailwind's own gray, not Archie's. If no semantic token fits, ask for one rather than reaching for a primitive.
+
+Every Figma variable behind these tokens, and the reasons for the mappings that aren't a straight copy, are in DESIGN.md → "Figma → theme.css token map". To add a color, add it to the `:root, .dark` block (and `.dark` when the dark value differs), then map it in `@theme inline` as `--color-<name>` under the comment it belongs to. It appears on this page automatically.
+
+## All color tokens
+
+Generated from `theme.css`. Each token shows its light swatch, then its dark one. The value under the name is what the token points at, light first, then dark when it differs.
+
+<ColorTokens css={themeCss} />
+
+## Primitive ramps
+
+Only the palettes the Archie modes use. archielabs.ds has more, for other products.
+
+<PrimitiveRamps css={themeCss} />
+
+## Radius
+
+All corner radii derive from one `--radius` token (`0.5rem`). Change it to adjust every component at once.
+
+<div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", margin: "1.5rem 0" }}>
+	{[
+		["rounded-sm", "calc(var(--radius) - 4px)"],
+		["rounded-md", "calc(var(--radius) - 2px)"],
+		["rounded-lg", "var(--radius)"],
+	].map(([name, value]) => (
+		<div key={name} style={{ textAlign: "center", fontSize: "0.8125rem" }}>
+			<div
+				style={{
+					width: 96,
+					height: 64,
+					borderRadius: value,
+					background: "var(--secondary)",
+					border: "1px solid var(--border)",
+					marginBottom: 8,
+				}}
+			/>
+			<code>{name}</code>
+		</div>
+	))}
+</div>

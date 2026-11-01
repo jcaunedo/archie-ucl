@@ -1,0 +1,86 @@
+{
+	"name": "@jcaunedo/archie-ucl",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "React component library for Archie",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./styles": "./dist/styles.css"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": [
+		"**/*.css"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jcaunedo/archie-ucl.git"
+	},
+	"publishConfig": {
+		"registry": "https://npm.pkg.github.com"
+	},
+	"scripts": {
+		"build": "tsup && cp src/styles/theme.css dist/styles.css",
+		"dev": "tsup --watch",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build",
+		"lint": "tsc --noEmit",
+		"clean": "rm -rf dist",
+		"preversion": "npm run lint",
+		"postversion": "npm run build",
+		"release:patch": "npm version patch",
+		"release:minor": "npm version minor",
+		"release:major": "npm version major",
+		"test": "vitest run --project=storybook",
+		"test:watch": "vitest --project=storybook"
+	},
+	"peerDependencies": {
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0"
+	},
+	"dependencies": {
+		"@hookform/resolvers": "^5.2.2",
+		"@radix-ui/react-checkbox": "^1.4.1",
+		"@radix-ui/react-label": "^2.1.17",
+		"@radix-ui/react-radio-group": "^1.5.1",
+		"@radix-ui/react-slot": "^1.2.4",
+		"@radix-ui/react-switch": "^1.4.1",
+		"@radix-ui/react-tabs": "^1.2.1",
+		"@radix-ui/react-tooltip": "^1.4.1",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"lucide-react": "^1.16.0",
+		"motion": "^12.43.0",
+		"react-hook-form": "^7.71.2",
+		"tailwind-merge": "^3.6.0",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@storybook/addon-docs": "^10.6.3",
+		"@storybook/addon-vitest": "^10.6.3",
+		"@storybook/react-vite": "^10.6.3",
+		"@tailwindcss/vite": "^4.3.0",
+		"@types/react": "^19.2.15",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^5.2.0",
+		"@vitest/browser-playwright": "^5.0.5",
+		"@vitest/coverage-v8": "^5.0.5",
+		"playwright": "^1.64.1",
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6",
+		"remark-gfm": "^4.0.1",
+		"storybook": "^10.6.3",
+		"tailwindcss": "^4.3.0",
+		"tsup": "^9.0.0",
+		"typescript": "^6.0.3",
+		"vite": "^8.0.14",
+		"vitest": "^5.0.5"
+	}
+}

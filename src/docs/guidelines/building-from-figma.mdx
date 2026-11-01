@@ -1,0 +1,53 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title='Guidelines/Building from Figma' />
+
+# Building from Figma
+
+## Two Figma files
+
+UCL is built from two design system files:
+
+| File | Holds |
+| --- | --- |
+| **archielabs.ds** | The master design system. Generic tokens and components shared by every project that uses it, with a mode per project. UCL syncs its **Archie** and **Archie-dark** modes |
+| **archie.ds** | Components only Archie uses, built on the master's tokens |
+
+- **Tokens** come only from archielabs.ds. An archie.ds component that uses a variable the master doesn't have gets flagged before a token is added, so Archie-only values don't leak into the shared master.
+- **Components** come from either file and land in the same `src/components/<category>/` folders. If a component exists in both, the archie.ds version wins for UCL.
+
+The rest of this page shares one idea: **read the literal value Figma defines for the exact node, and don't infer a "more correct" one.** Each rule was learned from a guess that built, rendered, looked plausible, and was wrong.
+
+## Spacing matches Figma's literal value
+
+**Rule:** every gap, margin and padding matches Figma's value for that exact node, checked per variant and state. If it matches a spacing token, use the token's class. If it doesn't, use the literal value (`gap-[2px]`). Never round it to the nearest token for consistency.
+
+**Why:** in a previous UCL, a card's two variants had a real, Figma-authored difference: one used a raw 2px gap, the other an 8px token. The 2px was normalized to 8px to "avoid a non-token literal", and nobody noticed until a pixel comparison against Figma. A raw value that's honest about not being a token is correct; a token-backed value that's a few pixels off is not.
+
+ℹ️ If the same visual role has different values across variants, keep the difference. If it looks like a Figma slip, ask which value wins instead of picking one.
+
+## Icons render at their instance size
+
+**Rule:** when Figma defines an icon instance at 24×24, render it at 24px. Don't measure a smaller shape inside the instance and decide the "visible" size is smaller. The inset is how the asset was drawn, not an instruction to shrink it.
+
+**Why:** in a previous UCL, a 24×24 plus icon whose vector measured 16×16 shipped at 16px and had to be corrected back. If a nested shape seems to disagree with the instance size, ask rather than pick one.
+
+## Tokens keep their Figma meaning
+
+**Rule:** use the semantic token that maps to the Figma variable the design binds, not the one whose name sounds closest. A few names differ on purpose:
+
+- shadcn's `accent` is the hover and selected surface (Figma `states/hover`). Figma's accent **tone** is `tone-accent`.
+- `secondary` is the light brand fill (Figma `tone/brand/subtle`), the one filled button that isn't solid.
+- `ring` is the focus ring (`input/ring-focus`); `input-ring` is Figma's `input/ring`.
+
+**Why:** several shadcn roles have no Figma variable of their own. They're mapped to the variable the matching Figma component actually binds, which neither file shows on its own. The full map is in DESIGN.md → "Figma → theme.css token map", and the [Colors](?path=/docs/foundations-colors--docs) page shows every token.
+
+## A composed component is a black box
+
+**Rule:** once a component sits inside another component or a layout, the parent never styles its insides. Scope slot styling to **direct children** (`[&>svg]`, `[&>img]`), never a descendant selector (`[&_svg]`) that also reaches into a child component.
+
+**Why:** in a previous UCL, a card's `[&_svg]:size-12`, meant for a logo passed into its icon slot, also resized the icon inside a child component placed there. Nothing caught it short of a visual diff against Figma.
+
+**For developers:** if a child needs to look different in a context, add a prop or variant to the child. Before reusing a slot for a new component, check that its selectors only target direct children.
+
+ℹ️ `Button`'s own `[&_svg]` rules style the icons passed directly into it, which is the component styling its own content. Check them before nesting another component that renders its own SVG inside a `Button`.
