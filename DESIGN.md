@@ -42,7 +42,7 @@ Each entry says what the rule is, why it exists, and how to apply it. Don't rest
 - **Audiences:** builders (founders, product teams and developers creating apps with Archie, the primary audience), team admins, internal operators, and end users of generated apps. The same voice applies to all of them.
 - **Terminology:** blueprint, module, user type, service, tech stack, prototype, app. Say "social sign-in" for consumer OAuth buttons (Google, Microsoft, Github), never "SSO", which is reserved for enterprise SAML/OIDC.
 
-**Why:** Archie's position is clarity before code, so the copy has to show that clarity. The calm tone matches the motion personality (CLAUDE.md → "Motion System"). The `ucl-ux-copywriter` skill reads this section, and PRODUCT.md repeats it for Impeccable.
+**Why:** Archie's position is clarity before code, so the copy has to show that clarity. The calm tone matches the motion personality (CLAUDE.md → "Motion System"). The `archie-copywriter` skill reads this section, and PRODUCT.md repeats it for Impeccable.
 
 **How to apply:**
 
