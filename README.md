@@ -194,6 +194,27 @@ What the org adds:
 
 ℹ️ The fewer apps use UCL when it moves, the less there is to update. If an org is likely, move before the first app goes to production.
 
+## Product Specs (PRDs)
+
+The [`prds/`](prds/) folder holds one Markdown spec (PRD) per screen, flow or system. CLAUDE.md and DESIGN.md say how the library is built. A PRD says what the product should do, for whom, and why: where it lives, its states and rules, its copy, the decisions made (marked ✅ with a date) and what's still open (marked ⚠️). When a layout and its PRD disagree, the PRD says what was intended: fix the code, or update the PRD if the decision changed.
+
+### Keeping PRDs Current
+
+When you work on a component or layout with Claude Code, the design decisions you make are added to the related PRD automatically. You don't have to ask. The rule lives in [CLAUDE.md → Keeping PRDs Current](CLAUDE.md), and the `ucl-generate-component` and `ucl-generate-layout` skills check it before they finish.
+
+**What triggers an update:** a change that settles or changes a product decision, meaning what the user sees or can do: a state, a rule (validation, statuses, limits), copy, the steps of a flow, or what's shown or hidden and when.
+
+**What doesn't:** visual or implementation fixes (spacing, tokens, a Figma value, a bug, a refactor) that don't change what the user sees or can do. Those go to DESIGN.md when they could easily be undone, and nowhere otherwise.
+
+**What Claude Code does:**
+
+1. **Finds the PRD that covers the work.** It searches `prds/` for the file's path, the component's name or the screen's **Location:**. A component is often covered by the PRD of the screen or system that uses it. There's no rule that every component gets its own PRD.
+2. **Updates it in the same change:** rewrites the rule where it's described, adds a dated ✅ note (`✅ **Decision (Nov 6, 2026):** …`), closes or rewords any ⚠️ note or open question the decision answers, and updates the header's `Last updated:`.
+3. **Asks when no PRD covers the work:** create a dedicated PRD, or add a section to an existing one. It never creates a PRD on its own.
+4. **Names the PRD it updated** in its reply, so you can review the change.
+
+ℹ️ When you edit code without Claude Code, follow the same steps by hand.
+
 ## Things to Know
 
 - **Never copy token values into an app.** Use the semantic Tailwind utilities that `@jcaunedo/archie-ucl/styles` provides (`bg-primary`, `text-muted-foreground`). The tokens change in UCL, and apps pick them up on the next version.
